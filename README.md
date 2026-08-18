@@ -1,28 +1,90 @@
-# Exif Renamer
+# TidyMemo
 
-Exif Renamer is a cross-platform tool for renaming files based on their EXIF data. It is designed to be simple, intuitive and easy to use, with a focus on speed and efficiency. The tool is built using C# and Avalonia UI. 
-It is available for Windows, Linux and MacOS. The tool is open source and licensed under the MIT license.
+**Organize, understand, and lighten your photo and video memories — locally.**
+
+TidyMemo is a free, open-source desktop application for taking control of personal
+photo and video collections. It helps turn folders full of camera-generated file
+names into a clear, durable archive while keeping every file on your computer.
+
+The project started as **ExifRenamer**, a focused EXIF-based image renamer. Its
+scope now includes video processing and is growing into a broader media-management
+tool. TidyMemo is the new product name and direction.
+
+> The technical migration from `ExifRenamer` to `TidyMemo` is still in progress.
+> Some project paths, package names, executables, and download files therefore
+> continue to use the former name temporarily.
+
+## What TidyMemo does today
+
+- Rename image collections from capture dates and EXIF metadata.
+- Build reusable filename patterns and preview every change before applying it.
+- Explore the metadata embedded in image files.
+- Compress one video or a complete folder using FFmpeg and configurable presets.
+- Process files locally, without an account, advertising, or cloud upload.
+- Run on Windows, macOS, and Linux.
+
+## Product direction
+
+TidyMemo is intended to become a simple workspace for maintaining personal media
+libraries rather than a conventional photo editor or cloud gallery. Its guiding
+principles are:
+
+1. **Memories first** — features should make personal collections easier to
+   understand, preserve, and revisit.
+2. **Safe by design** — preview potentially destructive operations and keep the
+   user in control of every change.
+3. **Local by default** — personal media stays on the user's device.
+4. **Useful organization** — filenames and folders should remain meaningful even
+   outside TidyMemo.
+5. **Photo and video together** — common workflows should not require separate
+   tools for each media type.
+
+Possible future work includes unified photo/video renaming, richer organization,
+duplicate detection, format conversion, and additional storage-saving tools.
+These items describe the direction of the project and are not commitments to a
+specific release.
 
 ## Screenshots
 
-![img.png](docs/img.png)
-![img_1.png](docs/img_1.png)
+The screenshots below currently show the application during its ExifRenamer to
+TidyMemo transition.
 
-The tool is under active development. Any contribution is appreciated. If you find any bugs or have any feature requests, please open an issue on the GitHub repository.
-![img_2.png](docs/img_2.png)
+![Rename workspace](docs/img.png)
+![Metadata explorer](docs/img_1.png)
+![Video workspace](docs/img_2.png)
 
-## Landing page
+## Technology
 
-The static product website lives in `docs/` and uses plain HTML, CSS and
-JavaScript. Preview it without building the desktop application:
+TidyMemo is built with C#, .NET, and Avalonia UI. Video operations rely on
+[FFmpeg](https://ffmpeg.org/). The application is licensed under the MIT License.
+
+## Development
+
+Requirements:
+
+- .NET 10 SDK
+- FFmpeg for video features
+
+Run the desktop application from the repository root:
+
+```shell
+dotnet run --project ExifRenamer/ExifRenamer.csproj
+```
+
+The legacy project path in this command will change when the technical rename is
+completed.
+
+## Product website
+
+The static website lives in `docs/` and uses plain HTML, CSS, and JavaScript.
+Preview it without building the desktop application:
 
 ```shell
 python -m http.server 8080 --directory docs
 ```
 
-Then open `http://localhost:8080`. The illustrative screenshots are the three
-`docs/assets/screenshot-*.svg` files; replace them while keeping the same file
-names, or update the paths in `docs/assets/app.js`.
+Then open `http://localhost:8080`. The illustrative screenshots are stored in
+`docs/assets/screenshot-*.svg`.
 
 Changes limited to `docs/` deploy through the `Deploy landing page` workflow and
 are ignored by the desktop build. In the repository settings, configure GitHub
@@ -30,8 +92,8 @@ Pages to use **GitHub Actions** as its source.
 
 ## Distribution
 
-GitHub Actions builds installable and portable packages for every push and pull
-request targeting `master`:
+GitHub Actions builds installable and portable packages for pushes and pull
+requests targeting `master`:
 
 - Windows x64: per-user NSIS installer and portable ZIP;
 - macOS Intel and Apple Silicon: `.app` bundle distributed as DMG and ZIP;
@@ -45,25 +107,34 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-Release tags must use the exact `vMAJOR.MINOR.PATCH` format. The tag supplies the
-application and package version. SHA-256 checksums are attached to each release.
+Release tags must use the exact `vMAJOR.MINOR.PATCH` format. SHA-256 checksums are
+attached to each release. Until the technical rename is complete, generated
+packages retain the `ExifRenamer` filename for compatibility with the current
+build and release scripts.
 
 ### Signing status
 
-The free distribution pipeline does not establish a verified publisher identity:
+The current distribution pipeline does not establish a verified publisher
+identity:
 
 - the Windows executable and NSIS installer are unsigned, so Microsoft Defender
   SmartScreen can show an unknown-publisher warning;
 - macOS bundles use an ad-hoc signature for bundle integrity, but they are not
-  signed with an Apple Developer ID or notarized. Gatekeeper can therefore require
-  the user to explicitly approve the first launch;
-- Linux packages are currently unsigned and are intended for direct download from
-  the GitHub Release together with its checksums.
+  signed with an Apple Developer ID or notarized;
+- Linux packages are unsigned and are distributed with their checksums.
 
-Certificates and notarization credentials must never be committed. When signing
-is added, store them as protected GitHub Actions environment secrets and expose
-them only to tag-triggered release jobs.
+Certificates and notarization credentials must never be committed. Store them as
+protected GitHub Actions environment secrets when signing is introduced.
 
-The scripts under `packaging/` deliberately use native or open-source tooling and
-do not require an Avalonia Parcel CLI license. `ExifRenamer.parcel` remains useful
-for local Parcel usage but is not read by the CI workflow.
+## Contributing
+
+TidyMemo is under active development. Bug reports, feature proposals, design
+feedback, documentation improvements, and code contributions are welcome through
+the repository's issue tracker.
+
+When proposing a feature, explain how it helps people organize, preserve, or
+reduce the storage footprint of their personal media.
+
+## License
+
+TidyMemo is available under the [MIT License](LICENSE).

@@ -23,9 +23,9 @@ if (os && downloads[os]) {
 }
 
 const shots = {
-  rename: ['assets/screenshot-renamer.svg', "Maquette de l'écran de renommage d'ExifRenamer"],
-  metadata: ['assets/screenshot-metadata.svg', "Maquette de l'explorateur de métadonnées d'ExifRenamer"],
-  video: ['assets/screenshot-video.svg', "Maquette de l'écran de compression vidéo d'ExifRenamer"]
+  rename: ['assets/screenshot-renamer.svg', "Maquette de l'espace d'organisation de TidyMemo"],
+  metadata: ['assets/screenshot-metadata.svg', "Maquette de l'explorateur de métadonnées de TidyMemo"],
+  video: ['assets/screenshot-video.svg', "Maquette de l'espace de compression vidéo de TidyMemo"]
 };
 document.querySelectorAll('[data-shot]').forEach((tab) => tab.addEventListener('click', () => {
   document.querySelectorAll('[data-shot]').forEach((item) => item.setAttribute('aria-selected', String(item === tab)));
