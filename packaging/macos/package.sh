@@ -15,8 +15,8 @@ if [[ "$output_dir" == "/" ]]; then
 fi
 version="$3"
 architecture="$4"
-app_name="ExifRenamer"
-bundle_id="com.7echnet.ExifRenamer"
+app_name="TidyMemo"
+bundle_id="com.7echnet.TidyMemo"
 app_dir="$output_dir/$app_name.app"
 contents_dir="$app_dir/Contents"
 
@@ -24,6 +24,17 @@ rm -rf "$app_dir"
 mkdir -p "$contents_dir/MacOS" "$contents_dir/Resources"
 cp -R "$publish_dir"/. "$contents_dir/MacOS/"
 chmod +x "$contents_dir/MacOS/$app_name"
+
+iconset_dir="$output_dir/TidyMemo.iconset"
+rm -rf "$iconset_dir"
+mkdir -p "$iconset_dir"
+for size in 16 32 128 256 512; do
+  double_size=$((size * 2))
+  sips -z "$size" "$size" TidyMemo/Assets/TidyMemo.png --out "$iconset_dir/icon_${size}x${size}.png" >/dev/null
+  sips -z "$double_size" "$double_size" TidyMemo/Assets/TidyMemo.png --out "$iconset_dir/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$iconset_dir" -o "$contents_dir/Resources/TidyMemo.icns"
+rm -rf "$iconset_dir"
 
 cat > "$contents_dir/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -34,6 +45,7 @@ cat > "$contents_dir/Info.plist" <<EOF
   <key>CFBundleDisplayName</key><string>$app_name</string>
   <key>CFBundleExecutable</key><string>$app_name</string>
   <key>CFBundleIdentifier</key><string>$bundle_id</string>
+  <key>CFBundleIconFile</key><string>TidyMemo.icns</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>$app_name</string>
   <key>CFBundlePackageType</key><string>APPL</string>
@@ -50,8 +62,8 @@ EOF
 codesign --force --deep --sign - "$app_dir"
 codesign --verify --deep --strict "$app_dir"
 
-zip_path="$output_dir/ExifRenamer-macos-$architecture.zip"
-dmg_path="$output_dir/ExifRenamer-macos-$architecture.dmg"
+zip_path="$output_dir/TidyMemo-macos-$architecture.zip"
+dmg_path="$output_dir/TidyMemo-macos-$architecture.dmg"
 ditto -c -k --sequesterRsrc --keepParent "$app_dir" "$zip_path"
 dmg_root="$output_dir/dmg-root"
 rm -rf "$dmg_root"

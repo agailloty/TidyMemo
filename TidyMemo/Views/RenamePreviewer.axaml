@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:vm="using:TidyMemo.ViewModels"
+             x:DataType="vm:MainWindowViewModel"
+             x:Class="TidyMemo.Views.RenamePreviewer">
+    <Grid>
+        <ScrollViewer IsVisible="{Binding !IsBusy}" HorizontalScrollBarVisibility="Auto">
+            <ListBox Background="Transparent" ItemsSource="{Binding RenamePreviews, UpdateSourceTrigger=PropertyChanged}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnDefinitions="3*,*,3*">
+                            <TextBlock Grid.Column="0" Text="{Binding OldFilename}" />
+                            <TextBlock Grid.Column="1" Text="=>" />
+                            <TextBlock Grid.Column="2" Text="{Binding NewNameWithExtension}" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </ScrollViewer>
+        <Image Source="/Assets/wait-spinner.gif" Width="50" Height="50" IsVisible="{Binding IsBusy, UpdateSourceTrigger=PropertyChanged}" />
+    </Grid>
+</UserControl>

@@ -44,7 +44,7 @@ jobs:
       - name: Publish
         shell: pwsh
         run: |
-          dotnet publish ExifRenamer/ExifRenamer.csproj `
+          dotnet publish TidyMemo/TidyMemo.csproj `
             --configuration Release `
             --runtime win-x64 `
             --self-contained true `
@@ -55,7 +55,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force artifacts | Out-Null
-          Compress-Archive -Path publish/windows-x64/* -DestinationPath artifacts/ExifRenamer-windows-x64.zip
+          Compress-Archive -Path publish/windows-x64/* -DestinationPath artifacts/TidyMemo-windows-x64.zip
       - name: Install NSIS
         shell: pwsh
         run: choco install nsis --no-progress -y
@@ -70,14 +70,14 @@ jobs:
           & $makensis `
             "/DAPP_VERSION=${{ steps.version.outputs.version }}" `
             "/DPUBLISH_DIR=$((Resolve-Path 'publish/windows-x64').Path)" `
-            "/DOUTPUT_FILE=$((Resolve-Path 'artifacts').Path)\ExifRenamer-windows-x64-Setup.exe" `
+            "/DOUTPUT_FILE=$((Resolve-Path 'artifacts').Path)\TidyMemo-windows-x64-Setup.exe" `
             "/DREPOSITORY_ROOT=$((Resolve-Path '.').Path)" `
-            packaging/windows/ExifRenamer.nsi
+            packaging/windows/TidyMemo.nsi
       - name: Upload Windows packages
         uses: actions/upload-artifact@v4
         with:
-          name: exifrenamer-windows-x64
-          path: artifacts/ExifRenamer-windows-x64*
+          name: tidymemo-windows-x64
+          path: artifacts/TidyMemo-windows-x64*
           if-no-files-found: error
           retention-days: 14
 
@@ -117,7 +117,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Publish
         run: >-
-          dotnet publish ExifRenamer/ExifRenamer.csproj
+          dotnet publish TidyMemo/TidyMemo.csproj
           --configuration Release
           --runtime ${{ matrix.runtime }}
           --self-contained true
@@ -135,8 +135,8 @@ jobs:
       - name: Upload macOS packages
         uses: actions/upload-artifact@v4
         with:
-          name: exifrenamer-macos-${{ matrix.architecture }}
-          path: artifacts/ExifRenamer-macos-${{ matrix.architecture }}.*
+          name: tidymemo-macos-${{ matrix.architecture }}
+          path: artifacts/TidyMemo-macos-${{ matrix.architecture }}.*
           if-no-files-found: error
           retention-days: 14
 
@@ -166,7 +166,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Publish
         run: >-
-          dotnet publish ExifRenamer/ExifRenamer.csproj
+          dotnet publish TidyMemo/TidyMemo.csproj
           --configuration Release
           --runtime linux-x64
           --self-contained true
@@ -182,12 +182,12 @@ jobs:
           ${{ steps.version.outputs.version }}
           amd64
       - name: Inspect Debian package
-        run: dpkg-deb --info artifacts/ExifRenamer-linux-x64.deb
+        run: dpkg-deb --info artifacts/TidyMemo-linux-x64.deb
       - name: Upload Linux packages
         uses: actions/upload-artifact@v4
         with:
-          name: exifrenamer-linux-x64
-          path: artifacts/ExifRenamer-linux-x64.*
+          name: tidymemo-linux-x64
+          path: artifacts/TidyMemo-linux-x64.*
           if-no-files-found: error
           retention-days: 14
 
@@ -206,7 +206,7 @@ jobs:
           merge-multiple: true
       - name: Create checksums
         working-directory: release-assets
-        run: sha256sum ExifRenamer-* > checksums-sha256.txt
+        run: sha256sum TidyMemo-* > checksums-sha256.txt
       - name: Create release and attach assets
         env:
           GH_TOKEN: ${{ github.token }}
@@ -216,4 +216,4 @@ jobs:
           --repo "${{ github.repository }}"
           --verify-tag
           --generate-notes
-          --title "ExifRenamer ${{ github.ref_name }}"
+          --title "TidyMemo ${{ github.ref_name }}"

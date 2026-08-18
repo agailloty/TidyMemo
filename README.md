@@ -6,13 +6,8 @@ TidyMemo is a free, open-source desktop application for taking control of person
 photo and video collections. It helps turn folders full of camera-generated file
 names into a clear, durable archive while keeping every file on your computer.
 
-The project started as **ExifRenamer**, a focused EXIF-based image renamer. Its
-scope now includes video processing and is growing into a broader media-management
-tool. TidyMemo is the new product name and direction.
-
-> The technical migration from `ExifRenamer` to `TidyMemo` is still in progress.
-> Some project paths, package names, executables, and download files therefore
-> continue to use the former name temporarily.
+The project started as a focused EXIF-based image renamer. Its scope now includes
+video processing and is growing into a broader media-management tool.
 
 ## What TidyMemo does today
 
@@ -46,8 +41,7 @@ specific release.
 
 ## Screenshots
 
-The screenshots below currently show the application during its ExifRenamer to
-TidyMemo transition.
+The screenshots below show TidyMemo's main workspaces.
 
 ![Rename workspace](docs/img.png)
 ![Metadata explorer](docs/img_1.png)
@@ -68,11 +62,8 @@ Requirements:
 Run the desktop application from the repository root:
 
 ```shell
-dotnet run --project ExifRenamer/ExifRenamer.csproj
+dotnet run --project TidyMemo/TidyMemo.csproj
 ```
-
-The legacy project path in this command will change when the technical rename is
-completed.
 
 ## Product website
 
@@ -108,9 +99,7 @@ git push origin v1.0.0
 ```
 
 Release tags must use the exact `vMAJOR.MINOR.PATCH` format. SHA-256 checksums are
-attached to each release. Until the technical rename is complete, generated
-packages retain the `ExifRenamer` filename for compatibility with the current
-build and release scripts.
+attached to each release.
 
 ### Signing status
 

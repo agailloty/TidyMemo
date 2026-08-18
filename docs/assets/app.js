@@ -1,7 +1,7 @@
 const downloads = {
-  windows: { label: 'Windows', href: 'https://github.com/agailloty/ExifRenamer/releases/latest/download/ExifRenamer-windows-x64-Setup.exe', icon: '⊞' },
-  macos: { label: 'macOS', href: 'https://github.com/agailloty/ExifRenamer/releases/latest', icon: '●' },
-  linux: { label: 'Linux', href: 'https://github.com/agailloty/ExifRenamer/releases/latest/download/ExifRenamer-linux-x64.deb', icon: '◆' }
+  windows: { label: 'Windows', href: 'https://github.com/agailloty/TidyMemo/releases/latest/download/TidyMemo-windows-x64-Setup.exe', icon: '⊞' },
+  macos: { label: 'macOS', href: 'https://github.com/agailloty/TidyMemo/releases/latest', icon: '●' },
+  linux: { label: 'Linux', href: 'https://github.com/agailloty/TidyMemo/releases/latest/download/TidyMemo-linux-x64.deb', icon: '◆' }
 };
 
 function detectOS() {

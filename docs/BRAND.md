@@ -42,7 +42,7 @@ wrong product category.
 
 ## Logo directions
 
-### 1. The tidy stack — recommended
+### 1. The tidy stack
 
 Three slightly offset media cards become progressively aligned. The front card
 contains a small play triangle or image horizon, allowing the same symbol to
@@ -71,20 +71,28 @@ Three dots representing moments move along a line and settle into evenly spaced
 positions inside a rounded frame. This direction expresses chronology and works
 particularly well in motion for the website or splash screen.
 
+### 5. The memory tray — selected
+
+A warm archive tray holds two large cards: a sage photo card and an orange video
+card. The cards rise above the tray so both media types remain identifiable at a
+glance. This direction has been selected as the production application icon.
+
+Why it fits: the tray conveys care and organization without implying deletion,
+while the two cards give photos and videos equal importance.
+
 ## Recommended art direction
 
-Start with **the tidy stack**. Use the existing dark green as the primary color,
-the warm orange as an accent, and the pale background already present on the
-website. The symbol should also have a successful one-color version for Linux
-launchers, Windows installer assets, and small toolbar contexts.
+Use **the memory tray** as the primary icon. The dark green is the main color,
+with warm ivory, sage, and orange for the three foreground elements. The symbol
+must also have a successful one-color version for small toolbar contexts.
 
 Suggested construction:
 
 - Rounded-square application icon
 - Dark forest-green background
-- Three light media cards, offset by a few pixels
-- Front card aligned perfectly
-- Small orange play triangle or sun on the front card
+- Warm ivory archive tray
+- Sage photo card with a minimal landscape
+- Orange video card with a light play triangle
 - No text inside the application icon
 - `TidyMemo` wordmark beside the symbol in larger contexts
 
