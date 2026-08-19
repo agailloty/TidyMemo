@@ -27,10 +27,24 @@ public class ExifService
     public DateTime? GetDateFromExif(string filename)
     {
         var directories = ImageMetadataReader.ReadMetadata(filename);
-        var exifSubDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
-        var originalDate = exifSubDirectory?.GetDescription(ExifDirectoryBase.TagDateTimeOriginal);
-        var dateFormat = new DateTimeFormatInfo {DateSeparator = ":", TimeSeparator = ":"};
-        return originalDate != null ? DateTime.Parse(originalDate, dateFormat) : null;
+        var exif = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
+        var ifd0 = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
+
+        // Prefer the moment captured by the camera. Older cameras and edited
+        // files may expose only DateTimeDigitized or the generic DateTime tag.
+        return TryGetExifDate(exif, ExifDirectoryBase.TagDateTimeOriginal)
+               ?? TryGetExifDate(exif, ExifDirectoryBase.TagDateTimeDigitized)
+               ?? TryGetExifDate(ifd0, ExifDirectoryBase.TagDateTime);
+    }
+
+    private static DateTime? TryGetExifDate(MetadataExtractor.Directory? directory, int tagType)
+    {
+        if (directory == null) return null;
+        if (directory.TryGetDateTime(tagType, out var value)) return value;
+
+        var raw = directory.GetDescription(tagType);
+        return DateTime.TryParseExact(raw, "yyyy:MM:dd HH:mm:ss", CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeLocal, out value) ? value : null;
     }
     
     public string GetExifValue(Tag exifTag, string filename)
@@ -81,22 +95,31 @@ public class ExifService
         return result;
     }
 
-    private string InterpolateCustomFormat(string token, string filename)
+    public string InterpolateToken(string token, string filename)
     {
         string? result = token;
         var args = token.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-        string command = args[0];
+        string command = args[0].Trim().ToLowerInvariant();
         string flag = string.Empty;
         if (args.Length > 1)
         {
             flag = args[1];
         }
 
-        switch (command.ToLower())
+        switch (command)
         {
             case "datetaken":
                 var dateTaken = GetDateFromExif(filename);
                 result = dateTaken?.ToString(ParseDateFormat(flag));
+                break;
+            case "year":
+                result = (GetDateFromExif(filename) ?? File.GetCreationTime(filename)).ToString("yyyy");
+                break;
+            case "month":
+                result = (GetDateFromExif(filename) ?? File.GetCreationTime(filename)).ToString("MM");
+                break;
+            case "monthname":
+                result = (GetDateFromExif(filename) ?? File.GetCreationTime(filename)).ToString("MMMM");
                 break;
             case "datecreated":
                 var file = new FileInfo(filename);
@@ -109,7 +132,7 @@ public class ExifService
             default:
                 var exifTokens = GetExifTokens(filename);
                 var availableTokens = exifTokens.Select(e => e.Key).ToList();
-                if (availableTokens.Contains(command.ToLower()))
+                if (availableTokens.Contains(command))
                 {
                     result = exifTokens.FirstOrDefault(e => e.Key == command)?.Tag.Description;
                 }
@@ -158,19 +181,8 @@ public class ExifService
     
     public string GetExifTags(string customFormat, string filename)
     {
-        string result = string.Empty;
-        if (!string.IsNullOrEmpty(customFormat))
-        {
-            string pattern = "%([^%]+)%";
-
-            MatchCollection matches = Regex.Matches(customFormat, pattern);
-            foreach (Match match in matches)
-            {
-                var token = match.Value.Replace("%", "");
-                result += InterpolateCustomFormat(token, filename);
-            }
-        }
-        
-        return result;
+        if (string.IsNullOrEmpty(customFormat)) return string.Empty;
+        return Regex.Replace(customFormat, "%([^%]+)%",
+            match => InterpolateToken(match.Groups[1].Value, filename));
     }
 }

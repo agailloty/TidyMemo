@@ -178,6 +178,19 @@
                                 <Button Content="Exif Explorer" VerticalAlignment="Bottom" Margin="0 5 0 0"
                                         Command="{Binding ShowExifExplorerCommand}"
                                         IsVisible="{Binding IsCustomSelected}" />
+
+                                <CheckBox Content="Organize into folders"
+                                          IsChecked="{Binding OrganizeIntoFolders, Mode=TwoWay}"
+                                          Margin="0 12 0 4" />
+                                <StackPanel IsVisible="{Binding OrganizeIntoFolders}" Spacing="4">
+                                    <TextBlock Text="Folder hierarchy" Opacity="0.7" />
+                                    <TextBox Text="{Binding FolderPattern, Mode=TwoWay}"
+                                             PlaceholderText="%year%/%month%" />
+                                    <TextBlock Text="Tokens: %year%, %month%, %monthname% or any EXIF token"
+                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" />
+                                    <Button Content="UPDATE PREVIEW"
+                                            Command="{Binding ValidateCustomFormatCommand}" />
+                                </StackPanel>
                             </StackPanel>
 
                             <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal">

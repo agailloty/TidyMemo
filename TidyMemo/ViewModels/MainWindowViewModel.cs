@@ -30,6 +30,8 @@ public class MainWindowViewModel : ViewModelBase
     private string _customDateFormat = string.Empty;
     private bool _includeSubfolders;
     private int _selectedModuleIndex;
+    private bool _organizeIntoFolders;
+    private string _folderPattern = "%year%/%month%";
 
     public MainWindowViewModel(IDialogService dialogService)
     {
@@ -223,10 +225,6 @@ public class MainWindowViewModel : ViewModelBase
 
     private async Task<PreviewModel[]> GetImagePreviews()
     {
-        List<string[]> previews = new();
-        foreach (var folder in PathFolders) previews.Add(_folderService.GetImageFiles(folder.FullName, IncludeSubfolders));
-
-        var files = previews.SelectMany(preview => preview).ToArray();
         var dateRenamerPattern = SelectedDateRenamerPattern;
         if (SelectedDateRenamerPattern.Name == "Custom" && !string.IsNullOrEmpty(CustomFormat))
         {
@@ -247,8 +245,20 @@ public class MainWindowViewModel : ViewModelBase
             };
         }
         
-        var previewResults = await _renamerService.GetRenamePreviews(files, dateRenamerPattern, SelectedRenamerDateType.DateType, IsCustomSelected);
-        return previewResults;
+        var results = new List<PreviewModel>();
+        foreach (var folder in PathFolders)
+        {
+            var files = _folderService.GetImageFiles(folder.FullName, IncludeSubfolders);
+            var organization = new PhotoOrganizationOptions
+            {
+                Enabled = OrganizeIntoFolders,
+                RootFolder = folder.FullName,
+                FolderPattern = FolderPattern
+            };
+            results.AddRange(await _renamerService.GetRenamePreviews(files, dateRenamerPattern,
+                SelectedRenamerDateType.DateType, IsCustomSelected, organization));
+        }
+        return results.ToArray();
     }
 
     private async Task OpenExifMetadataDialog()
@@ -297,10 +307,28 @@ public class MainWindowViewModel : ViewModelBase
         foreach (var preview in previews)
         {
             var oldPath = Path.Join(preview.FolderPath, preview.OldFilename);
-            var newPath = Path.Join(preview.FolderPath, preview.NewNameWithExtension);
-            File.Move(oldPath, newPath, overwrite:true);
+            var destinationFolder = preview.DestinationFolderPath ?? preview.FolderPath ?? string.Empty;
+            Directory.CreateDirectory(destinationFolder);
+            var newPath = Path.Join(destinationFolder, preview.NewNameWithExtension);
+            if (string.Equals(oldPath, newPath, System.StringComparison.OrdinalIgnoreCase)) continue;
+            File.Move(oldPath, newPath, overwrite:false);
         }
         await UpdateImageCount();
+    }
+
+    public bool OrganizeIntoFolders
+    {
+        get => _organizeIntoFolders;
+        set
+        {
+            if (SetProperty(ref _organizeIntoFolders, value)) Task.Run(UpdateImageCount);
+        }
+    }
+
+    public string FolderPattern
+    {
+        get => _folderPattern;
+        set => SetProperty(ref _folderPattern, value);
     }
 
     private void ClearImages()
@@ -310,6 +338,8 @@ public class MainWindowViewModel : ViewModelBase
         TotalImagesCount = 0;
         IsRenameEnabled = false;
         IncludeSubfolders = false;
+        OrganizeIntoFolders = false;
+        FolderPattern = "%year%/%month%";
         CustomFormat = string.Empty;
         CustomDateFormat = string.Empty;
         SelectedRenamerDateType = RenamerDateTypes[1];

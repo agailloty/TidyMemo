@@ -60,13 +60,21 @@ public class RenamerService
         return true;
     }
 
-    public async Task<PreviewModel[]> GetRenamePreviews(string[] filenames, RenamerPatternModel pattern, DateType selectedDateType, bool isCustomMode)
+    public async Task<PreviewModel[]> GetRenamePreviews(string[] filenames, RenamerPatternModel pattern, DateType selectedDateType, bool isCustomMode,
+        PhotoOrganizationOptions? organization = null)
     {
         var previews = new PreviewModel[filenames.Length];
         if (pattern.Name == "Choose pattern")
         {
-            previews = filenames.Select(f => new PreviewModel { OldFilename = new FileInfo(f).Name }).ToArray();
-            return previews;
+            previews = filenames.Select(f => new PreviewModel
+            {
+                OldFilename = Path.GetFileName(f),
+                NewFilename = Path.GetFileNameWithoutExtension(f),
+                Extension = Path.GetExtension(f),
+                FolderPath = Path.GetDirectoryName(f),
+                DestinationFolderPath = GetDestinationFolder(f, organization)
+            }).ToArray();
+            return MakeUniqueFilenames(previews);
         }
         await Task.Run(() =>
         {
@@ -80,12 +88,33 @@ public class RenamerService
                 {
                     previews[i] = GetDateRenamePreview(filenames[i], pattern, selectedDateType);
                 }
+
+                previews[i].DestinationFolderPath = GetDestinationFolder(filenames[i], organization);
                 
             }
         });
         
         previews = MakeUniqueFilenames(previews);
         return previews;
+    }
+
+    private string GetDestinationFolder(string filename, PhotoOrganizationOptions? options)
+    {
+        var sourceFolder = Path.GetDirectoryName(filename) ?? string.Empty;
+        if (options is not { Enabled: true }) return sourceFolder;
+
+        var root = string.IsNullOrWhiteSpace(options.RootFolder) ? sourceFolder : options.RootFolder;
+        var rendered = _exifService.GetExifTags(options.FolderPattern, filename);
+        var parts = rendered.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(SanitizePathSegment)
+            .Where(part => part.Length > 0);
+        return parts.Aggregate(root, Path.Combine);
+    }
+
+    private static string SanitizePathSegment(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        return string.Concat(value.Trim().Select(c => invalid.Contains(c) ? '_' : c));
     }
     
     private PreviewModel GetDateRenamePreview(string filename, RenamerPatternModel pattern, DateType selectedDateType)
@@ -113,7 +142,9 @@ public class RenamerService
         var file = new FileInfo(filename);
         var extension = file.Extension;
         
-        var newFilename = _exifService.GetExifTags(pattern.Name, filename);
+        var rendered = _exifService.GetExifTags(pattern.Name, filename);
+        var newFilename = SanitizePathSegment(rendered);
+        if (string.IsNullOrWhiteSpace(newFilename)) newFilename = Path.GetFileNameWithoutExtension(filename);
         var folderPath = file.Directory?.FullName ?? string.Empty;
         return new PreviewModel { OldFilename = file.Name, NewFilename = newFilename, FolderPath = folderPath, Extension = extension };
     }
@@ -132,17 +163,21 @@ public class RenamerService
     
     private PreviewModel[] MakeUniqueFilenames(PreviewModel[] previews)
     {
-        var uniqueFilenames = new List<string>();
+        var uniqueFilenames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var preview in previews)
         {
             var newName = preview.NewFilename ?? string.Empty;
             var i = 1;
-            while (uniqueFilenames.Contains(newName))
+            var destination = preview.DestinationFolderPath ?? preview.FolderPath ?? string.Empty;
+            var candidate = Path.Combine(destination, newName + preview.Extension);
+            var source = Path.Combine(preview.FolderPath ?? string.Empty, preview.OldFilename ?? string.Empty);
+            while (!uniqueFilenames.Add(candidate) ||
+                   (File.Exists(candidate) && !string.Equals(candidate, source, StringComparison.OrdinalIgnoreCase)))
             {
                 newName = $"{preview.NewFilename}_{i}";
                 i++;
+                candidate = Path.Combine(destination, newName + preview.Extension);
             }
-            uniqueFilenames.Add(newName);
             preview.NewFilename = newName;
         }
         return previews;

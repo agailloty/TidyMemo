@@ -11,10 +11,14 @@
             <ListBox Background="Transparent" ItemsSource="{Binding RenamePreviews, UpdateSourceTrigger=PropertyChanged}">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <Grid ColumnDefinitions="3*,*,3*">
+                        <Grid ColumnDefinitions="3*,Auto,4*">
                             <TextBlock Grid.Column="0" Text="{Binding OldFilename}" />
-                            <TextBlock Grid.Column="1" Text="=>" />
-                            <TextBlock Grid.Column="2" Text="{Binding NewNameWithExtension}" />
+                            <TextBlock Grid.Column="1" Text="=>" Margin="8 0" />
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="{Binding NewNameWithExtension}" />
+                                <TextBlock Text="{Binding DestinationFolderPath}" FontSize="11" Opacity="0.55"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
