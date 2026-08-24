@@ -141,7 +141,7 @@ public partial class VideoCompressorViewModel : ViewModelBase
         _settings = settings;
 
         Presets = BuildPresets();
-        _selectedPreset = Presets[0]; // CRF 30 / medium by default
+        _selectedPreset = Presets[0]; // FFmpeg encoder defaults
         Operations = BuildOperations();
         _selectedOperation = Operations[0];
 
@@ -438,7 +438,8 @@ public partial class VideoCompressorViewModel : ViewModelBase
     private static IReadOnlyList<VideoCompressionPreset> BuildPresets() =>
         new List<VideoCompressionPreset>
         {
-            new() { Name = "Compact (default)",   Description = "CRF 30 · medium — efficient compression and reduced size",             Crf = 30, FfmpegPreset = "medium"    },
+            new() { Name = "Auto (default)",      Description = "FFmpeg defaults — keeps source format, resolution, audio and metadata", Crf = 0, FfmpegPreset = "medium", UseEncoderDefaults = true },
+            new() { Name = "Compact",             Description = "CRF 30 · medium — efficient compression and reduced size",             Crf = 30, FfmpegPreset = "medium"    },
             new() { Name = "Very high quality", Description = "CRF 18 · slow — near-original quality, large files",                Crf = 18, FfmpegPreset = "slow"      },
             new() { Name = "High quality",         Description = "CRF 22 · medium — excellent quality, good compression",               Crf = 22, FfmpegPreset = "medium"    },
             new() { Name = "Balanced",             Description = "CRF 27 · veryfast — good quality/size trade-off (recommended)",       Crf = 27, FfmpegPreset = "veryfast"  },

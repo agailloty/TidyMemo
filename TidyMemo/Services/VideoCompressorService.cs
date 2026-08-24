@@ -186,9 +186,6 @@ public class VideoCompressorService
         {
             "-y",
             "-i", $"\"{inputPath}\"",
-            "-vcodec", "libx264",
-            "-crf", preset.Crf.ToString(),
-            "-preset", preset.FfmpegPreset,
             "-acodec", "copy",
             "-threads", "4",
             "-loglevel", "error",
@@ -198,6 +195,16 @@ public class VideoCompressorService
             "-map_metadata:s:v", "0:s:v",
             "-map_metadata:s:a", "0:s:a"
         };
+
+        if (!preset.UseEncoderDefaults)
+        {
+            parts.InsertRange(3, new[]
+            {
+                "-vcodec", "libx264",
+                "-crf", preset.Crf.ToString(),
+                "-preset", preset.FfmpegPreset
+            });
+        }
 
         if (!string.IsNullOrEmpty(preset.ScaleFilter))
         {
