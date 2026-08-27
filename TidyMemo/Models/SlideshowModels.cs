@@ -33,6 +33,14 @@ public sealed class SlideshowOptions
     public SlideshowGradientDirection GradientDirection { get; init; }
     public string? BackgroundImage { get; init; }
     public double ImageScaling { get; init; } = 0.8;
+    public bool EnableBorder { get; init; }
+    public int BorderWidth { get; init; } = 6;
+    public string BorderColor { get; init; } = "#FFFFFF";
+    public bool EnableShadow { get; init; }
+    public int ShadowOffsetX { get; init; } = 12;
+    public int ShadowOffsetY { get; init; } = 12;
+    public int ShadowBlur { get; init; } = 18;
+    public double ShadowOpacity { get; init; } = 0.45;
     public bool UseEnhancedBackgroundProcessing { get; init; } = true;
     public bool PreferImageMagick { get; init; }
     public string ImageMagickPath { get; init; } = "magick";

@@ -37,7 +37,8 @@ public sealed class SlideshowService
             IReadOnlyList<string> images = options.Images;
             var useImageMagick = options.Type == SlideshowType.Background &&
                                  options.BackgroundType == SlideshowBackgroundType.Image &&
-                                 options.UseEnhancedBackgroundProcessing && options.PreferImageMagick;
+                                 options.UseEnhancedBackgroundProcessing && options.PreferImageMagick &&
+                                 !options.EnableBorder && !options.EnableShadow;
             if (useImageMagick)
             {
                 progress?.Report(new SlideshowProgress(0, "Compositing images with ImageMagick..."));
@@ -81,6 +82,12 @@ public sealed class SlideshowService
         if (o.Quality is < 0 or > 51) return "CRF quality must be between 0 and 51.";
         if (o.Volume is < 0 or > 1) return "Audio volume must be between 0 and 1.";
         if (o.ImageScaling is <= 0 or > 1) return "Image scaling must be between 0 and 1.";
+        if (o.BorderWidth is < 0 or > 200) return "Border width must be between 0 and 200 pixels.";
+        if (o.ShadowOffsetX is < -200 or > 200 || o.ShadowOffsetY is < -200 or > 200)
+            return "Shadow offsets must be between -200 and 200 pixels.";
+        if (o.ShadowBlur is < 0 or > 100) return "Shadow blur must be between 0 and 100 pixels.";
+        if (o.ShadowOpacity is < 0 or > 1) return "Shadow opacity must be between 0 and 1.";
+        if (o.EnableBorder && !IsValidColor(o.BorderColor)) return "Border color must use the #RRGGBB format.";
         if (!string.IsNullOrWhiteSpace(o.AudioFile) && !File.Exists(o.AudioFile)) return "The selected audio file cannot be found.";
         if (o.Type == SlideshowType.Background && o.BackgroundType == SlideshowBackgroundType.Image && !File.Exists(o.BackgroundImage))
             return "Select a valid background image.";
@@ -157,6 +164,11 @@ public sealed class SlideshowService
     }
 
     private static string CleanColor(string color) => "0x" + color.Trim().TrimStart('#');
+    private static bool IsValidColor(string value)
+    {
+        var hex = value.Trim().TrimStart('#');
+        return hex.Length == 6 && int.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _);
+    }
     private static (int R, int G, int B) ParseColor(string value)
     {
         var hex = value.Trim().TrimStart('#');
@@ -213,10 +225,9 @@ public sealed class SlideshowService
             token.ThrowIfCancellationRequested();
             var target = Path.Combine(output, $"IMG_{i + 1:D6}.png");
             var psi = NewProcess(o.FfmpegPath);
-            Add(psi, "-hide_banner", "-i", o.Images[i], "-vf",
-                $"scale={width}:{height}:force_original_aspect_ratio=decrease,format=rgba," +
-                $"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color={paddingColor}",
-                "-frames:v", "1", "-y", target);
+            Add(psi, "-hide_banner", "-i", o.Images[i], "-filter_complex",
+                BuildImageEffectFilter(o, width, height, paddingColor),
+                "-map", "[prepared]", "-frames:v", "1", "-y", target);
             var run = await RunToolAsync(psi, token);
             if (run.ExitCode != 0 || !File.Exists(target))
                 throw new InvalidOperationException($"Could not prepare {Path.GetFileName(o.Images[i])}: {LastUsefulError(run.Error)}");
@@ -226,6 +237,43 @@ public sealed class SlideshowService
         }
 
         return result;
+    }
+
+    private static string BuildImageEffectFilter(SlideshowOptions o, int width, int height, string paddingColor)
+    {
+        var border = o.EnableBorder ? o.BorderWidth : 0;
+        var shadowMargin = o.EnableShadow ? o.ShadowBlur * 3 : 0;
+        var offsetX = o.EnableShadow ? o.ShadowOffsetX : 0;
+        var offsetY = o.EnableShadow ? o.ShadowOffsetY : 0;
+        var left = shadowMargin + Math.Max(0, -offsetX);
+        var right = shadowMargin + Math.Max(0, offsetX);
+        var top = shadowMargin + Math.Max(0, -offsetY);
+        var bottom = shadowMargin + Math.Max(0, offsetY);
+        var availableWidth = Math.Max(2, width - left - right);
+        var availableHeight = Math.Max(2, height - top - bottom);
+        var filters = new StringBuilder($"[0:v]scale={availableWidth}:{availableHeight}:force_original_aspect_ratio=decrease,format=rgba");
+
+        if (border > 0)
+            filters.Append($",drawbox=x=0:y=0:w=iw:h=ih:color={CleanColor(o.BorderColor)}:t={border}");
+
+        if (!o.EnableShadow)
+        {
+            filters.Append($",pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color={paddingColor}[prepared]");
+            return filters.ToString();
+        }
+
+        var opacity = o.ShadowOpacity.ToString("0.###", CultureInfo.InvariantCulture);
+        var blur = Math.Max(0.01, o.ShadowBlur).ToString("0.###", CultureInfo.InvariantCulture);
+        var canvasWidth = $"iw+{left + right}";
+        var canvasHeight = $"ih+{top + bottom}";
+        filters.Append("[photo];[photo]split[foreground][shadow]");
+        filters.Append($";[shadow]colorchannelmixer=rr=0:gg=0:bb=0:aa={opacity}," +
+                       $"pad={canvasWidth}:{canvasHeight}:{left + offsetX}:{top + offsetY}:color=black@0," +
+                       $"gblur=sigma={blur}:steps=2[softshadow]");
+        filters.Append($";[foreground]pad={canvasWidth}:{canvasHeight}:{left}:{top}:color=black@0[card]");
+        filters.Append($";[softshadow][card]overlay=0:0:format=auto," +
+                       $"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color={paddingColor}[prepared]");
+        return filters.ToString();
     }
 
     private static async Task<SlideshowResult> RunFfmpegAsync(ProcessStartInfo psi, string output, double totalSeconds,

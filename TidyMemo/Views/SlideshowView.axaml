@@ -102,6 +102,27 @@
                             </StackPanel>
                         </Border>
 
+                        <TextBlock Text="Image effects" FontWeight="SemiBold" />
+                        <Border Classes="warningCard">
+                            <StackPanel Spacing="7">
+                                <CheckBox Content="Add a border" IsChecked="{Binding EnableBorder}" />
+                                <Grid IsVisible="{Binding EnableBorder}" ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <StackPanel Grid.Column="0"><TextBlock Text="Width (pixels)" FontSize="11"/><NumericUpDown Minimum="0" Maximum="200" Value="{Binding BorderWidth}"/></StackPanel>
+                                    <StackPanel Grid.Column="1"><TextBlock Text="Color (#RRGGBB)" FontSize="11"/><TextBox Text="{Binding BorderColor}"/></StackPanel>
+                                </Grid>
+                                <CheckBox Content="Add a drop shadow" IsChecked="{Binding EnableShadow}" />
+                                <Grid IsVisible="{Binding EnableShadow}" ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                                    <StackPanel Grid.Column="0"><TextBlock Text="Offset X" FontSize="11"/><NumericUpDown Minimum="-200" Maximum="200" Value="{Binding ShadowOffsetX}"/></StackPanel>
+                                    <StackPanel Grid.Column="1"><TextBlock Text="Offset Y" FontSize="11"/><NumericUpDown Minimum="-200" Maximum="200" Value="{Binding ShadowOffsetY}"/></StackPanel>
+                                    <StackPanel Grid.Column="2"><TextBlock Text="Blur" FontSize="11"/><NumericUpDown Minimum="0" Maximum="100" Value="{Binding ShadowBlur}"/></StackPanel>
+                                </Grid>
+                                <StackPanel IsVisible="{Binding EnableShadow}">
+                                    <TextBlock Text="Opacity (0-1)" FontSize="11" />
+                                    <NumericUpDown Minimum="0" Maximum="1" Increment="0.05" Value="{Binding ShadowOpacity}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
                         <TextBlock Text="Background music (optional)" FontWeight="SemiBold" />
                         <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                             <TextBox Text="{Binding AudioFile}" IsReadOnly="True" PlaceholderText="No music selected" />

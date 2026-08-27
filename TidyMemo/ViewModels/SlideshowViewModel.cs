@@ -51,6 +51,14 @@ public partial class SlideshowViewModel : ViewModelBase
     [ObservableProperty] private double _imageScaling = 0.8;
     [ObservableProperty] private string _backgroundColor = "#000000";
     [ObservableProperty] private string _gradientEndColor = "#303060";
+    [ObservableProperty] private bool _enableBorder;
+    [ObservableProperty] private int _borderWidth = 6;
+    [ObservableProperty] private string _borderColor = "#FFFFFF";
+    [ObservableProperty] private bool _enableShadow;
+    [ObservableProperty] private int _shadowOffsetX = 12;
+    [ObservableProperty] private int _shadowOffsetY = 12;
+    [ObservableProperty] private int _shadowBlur = 18;
+    [ObservableProperty] private double _shadowOpacity = 0.45;
     [ObservableProperty] private string? _audioFile;
     [ObservableProperty] private string? _backgroundImage;
     [ObservableProperty] private string _outputFile = string.Empty;
@@ -162,6 +170,9 @@ public partial class SlideshowViewModel : ViewModelBase
             Volume = Volume, Type = SelectedType, BackgroundType = SelectedBackgroundType, BackgroundColor = BackgroundColor,
             GradientEndColor = GradientEndColor, GradientDirection = SelectedGradientDirection, BackgroundImage = BackgroundImage,
             ImageScaling = ImageScaling, UseEnhancedBackgroundProcessing = UseEnhancedBackgroundProcessing,
+            EnableBorder = EnableBorder, BorderWidth = BorderWidth, BorderColor = BorderColor,
+            EnableShadow = EnableShadow, ShadowOffsetX = ShadowOffsetX, ShadowOffsetY = ShadowOffsetY,
+            ShadowBlur = ShadowBlur, ShadowOpacity = ShadowOpacity,
             PreferImageMagick = PreferImageMagick, ImageMagickPath = ImageMagickPath
         }, progress, _cancellation.Token);
         StatusMessage = result.Success ? $"Slideshow created: {result.OutputFile}" : result.ErrorMessage ?? "Slideshow creation failed.";
