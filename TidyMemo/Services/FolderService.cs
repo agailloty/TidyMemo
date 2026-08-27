@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -5,20 +7,23 @@ namespace TidyMemo.Services;
 
 public class FolderService
 {
+    private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".heic", ".heif"
+    };
+
     public int GetImageFilesCount(string folderPath, bool includeSubfolders = false)
     {
-        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff" };
         var option = includeSubfolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
         return Directory.GetFiles(folderPath, "*", option)
-            .Count(file => imageExtensions.Contains(Path.GetExtension(file).ToLower()));
+            .Count(file => ImageExtensions.Contains(Path.GetExtension(file)));
     }
 
     public string[] GetImageFiles(string folderPath, bool includeSubfolders = false)
     {
-        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff" };
         var option = includeSubfolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
         return Directory.GetFiles(folderPath, "*", option)
-            .Where(file => imageExtensions.Contains(Path.GetExtension(file).ToLower()))
+            .Where(file => ImageExtensions.Contains(Path.GetExtension(file)))
             .ToArray();
     }
 }
