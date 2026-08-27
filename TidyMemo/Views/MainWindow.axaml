@@ -39,7 +39,7 @@
                     <Grid>
                         <StackPanel Margin="36" Spacing="24" MaxWidth="900"
                                     HorizontalAlignment="Stretch" VerticalAlignment="Center">
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="20">
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="20">
                                 <Button Grid.Column="0" Classes="moduleCard"
                                         Command="{Binding ShowImagesCommand}">
                                     <StackPanel Spacing="12">
@@ -48,6 +48,19 @@
                                         <TextBlock Text="Rename photo collections from dates and EXIF metadata, with a preview before applying changes."
                                                    TextWrapping="Wrap" Opacity="0.7" />
                                         <TextBlock Text="OPEN IMAGE WORKSPACE  →"
+                                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                   FontWeight="SemiBold" Margin="0 8 0 0" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Grid.Column="2" Classes="moduleCard"
+                                        Command="{Binding ShowSlideTuneCommand}">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="▶" FontSize="42" />
+                                        <TextBlock Text="SlideTune" FontSize="22" FontWeight="Bold" />
+                                        <TextBlock Text="Create MP4 slideshows from photos, with music and customizable backgrounds."
+                                                   TextWrapping="Wrap" Opacity="0.7" />
+                                        <TextBlock Text="OPEN SLIDETUNE  →"
                                                    Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
                                                    FontWeight="SemiBold" Margin="0 8 0 0" />
                                     </StackPanel>
@@ -226,7 +239,11 @@
                     <views:VideoCompressorView DataContext="{Binding VideoCompressor}" />
                 </TabItem>
 
-                <!-- Tab 3 : Settings -->
+                <TabItem Header="▶  SlideTune">
+                    <views:SlideshowView DataContext="{Binding SlideTune}" />
+                </TabItem>
+
+                <!-- Tab 4 : Settings -->
                 <TabItem Header="⚙  Settings">
                     <ScrollViewer Padding="10">
                         <StackPanel Spacing="20" MaxWidth="600">

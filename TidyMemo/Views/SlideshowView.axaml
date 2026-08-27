@@ -1,0 +1,138 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:TidyMemo.ViewModels"
+             xmlns:models="using:TidyMemo.Models"
+             x:Class="TidyMemo.Views.SlideshowView"
+             x:DataType="vm:SlideshowViewModel">
+    <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="12" RowSpacing="12">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <StackPanel>
+                <TextBlock Text="SlideTune" FontSize="28" FontWeight="Bold" />
+                <TextBlock Text="Turn an ordered collection of images into an MP4 slideshow with optional music."
+                           Opacity="0.65" TextWrapping="Wrap" />
+            </StackPanel>
+            <Border Grid.Column="1" Classes="videoBadge" VerticalAlignment="Center">
+                <TextBlock Text="FFMPEG" FontWeight="Bold" FontSize="11" />
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnDefinitions="2*,3*" ColumnSpacing="14">
+            <Border Grid.Column="0" Classes="videoCard">
+                <Grid RowDefinitions="Auto,Auto,*,Auto">
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="01  IMAGES" Classes="sectionEyebrow" />
+                        <TextBlock Text="Build your sequence" FontWeight="Bold" FontSize="18" />
+                    </StackPanel>
+                    <Grid Grid.Row="1" ColumnDefinitions="*,*,Auto" ColumnSpacing="8" Margin="0 12 0 10">
+                        <Button Grid.Column="0" Content="ADD IMAGES" Classes="accent" Command="{Binding AddImagesCommand}" />
+                        <Button Grid.Column="1" Content="ADD FOLDER" Command="{Binding AddFolderCommand}" />
+                        <CheckBox Grid.Column="2" Content="Subfolders" IsChecked="{Binding IncludeSubfolders}" VerticalAlignment="Center" />
+                    </Grid>
+                    <ListBox Grid.Row="2" ItemsSource="{Binding Images}" MinHeight="220">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SlideshowItemViewModel">
+                                <Grid ColumnDefinitions="32,*,Auto,Auto,Auto" Margin="2 4">
+                                    <TextBlock Text="{Binding Position}" Opacity="0.55" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{Binding FileName}" ToolTip.Tip="{Binding Path}"
+                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    <Button Grid.Column="2" Content="↑" Width="28" Height="28" Padding="0"
+                                            Command="{Binding $parent[UserControl].((vm:SlideshowViewModel)DataContext).MoveUpCommand}"
+                                            CommandParameter="{Binding}" />
+                                    <Button Grid.Column="3" Content="↓" Width="28" Height="28" Padding="0" Margin="3 0"
+                                            Command="{Binding $parent[UserControl].((vm:SlideshowViewModel)DataContext).MoveDownCommand}"
+                                            CommandParameter="{Binding}" />
+                                    <Button Grid.Column="4" Content="×" Width="28" Height="28" Padding="0"
+                                            Command="{Binding $parent[UserControl].((vm:SlideshowViewModel)DataContext).RemoveImageCommand}"
+                                            CommandParameter="{Binding}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <StackPanel Grid.Row="3" Margin="0 10 0 0" Spacing="5">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <TextBlock Text="Order:" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="1" ItemsSource="{Binding SortModes}" SelectedItem="{Binding SelectedSortMode}" />
+                        </Grid>
+                        <TextBlock Text="{Binding ImageCountText}" Opacity="0.65" FontSize="11" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Classes="videoCard">
+                <ScrollViewer>
+                    <StackPanel Spacing="9">
+                        <TextBlock Text="02  PRESENTATION" Classes="sectionEyebrow" />
+                        <TextBlock Text="Configure the result" FontWeight="Bold" FontSize="18" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="Resolution" FontWeight="SemiBold" />
+                                <ComboBox ItemsSource="{Binding Resolutions}" SelectedItem="{Binding SelectedResolution}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Text="Seconds per image" FontWeight="SemiBold" />
+                                <NumericUpDown Minimum="0.1" Maximum="300" Increment="0.5" Value="{Binding ImageDuration}" />
+                            </StackPanel>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                            <StackPanel Grid.Column="0"><TextBlock Text="FPS" FontSize="11"/><NumericUpDown Minimum="1" Maximum="120" Value="{Binding FrameRate}"/></StackPanel>
+                            <StackPanel Grid.Column="1"><TextBlock Text="Quality / CRF" FontSize="11"/><NumericUpDown Minimum="0" Maximum="51" Value="{Binding Quality}"/></StackPanel>
+                            <StackPanel Grid.Column="2"><TextBlock Text="Encoder preset" FontSize="11"/><ComboBox ItemsSource="{Binding EncoderPresets}" SelectedItem="{Binding EncoderPreset}"/></StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Presentation mode" FontWeight="SemiBold" />
+                        <ComboBox ItemsSource="{Binding SlideshowTypes}" SelectedItem="{Binding SelectedType}" />
+                        <Border IsVisible="{Binding IsBackgroundMode}" Classes="warningCard">
+                            <StackPanel Spacing="7">
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <StackPanel Grid.Column="0"><TextBlock Text="Background type" FontSize="11"/><ComboBox ItemsSource="{Binding BackgroundTypes}" SelectedItem="{Binding SelectedBackgroundType}"/></StackPanel>
+                                    <StackPanel Grid.Column="1"><TextBlock Text="Image scale (0.1-1.0)" FontSize="11"/><NumericUpDown Minimum="0.1" Maximum="1" Increment="0.05" Value="{Binding ImageScaling}"/></StackPanel>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <StackPanel Grid.Column="0"><TextBlock Text="Start / solid color" FontSize="11"/><TextBox Text="{Binding BackgroundColor}"/></StackPanel>
+                                    <StackPanel Grid.Column="1" IsVisible="{Binding IsGradientBackground}"><TextBlock Text="End color" FontSize="11"/><TextBox Text="{Binding GradientEndColor}"/></StackPanel>
+                                </Grid>
+                                <ComboBox IsVisible="{Binding IsGradientBackground}" ItemsSource="{Binding GradientDirections}" SelectedItem="{Binding SelectedGradientDirection}" />
+                                <Grid IsVisible="{Binding IsImageBackground}" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <TextBox Text="{Binding BackgroundImage}" IsReadOnly="True" PlaceholderText="Background image" />
+                                    <Button Grid.Column="1" Content="BROWSE" Command="{Binding ChooseBackgroundImageCommand}" />
+                                </Grid>
+                                <CheckBox Content="Use enhanced background processing" IsChecked="{Binding UseEnhancedBackgroundProcessing}" />
+                                <CheckBox Content="Prefer ImageMagick for image backgrounds" IsChecked="{Binding PreferImageMagick}" IsVisible="{Binding IsImageBackground}" />
+                                <TextBox Text="{Binding ImageMagickPath}" IsVisible="{Binding PreferImageMagick}" PlaceholderText="ImageMagick executable (magick)" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Background music (optional)" FontWeight="SemiBold" />
+                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                            <TextBox Text="{Binding AudioFile}" IsReadOnly="True" PlaceholderText="No music selected" />
+                            <Button Grid.Column="1" Content="BROWSE" Command="{Binding ChooseAudioCommand}" />
+                            <Button Grid.Column="2" Content="CLEAR" Command="{Binding ClearAudioCommand}" />
+                        </Grid>
+                        <StackPanel IsVisible="{Binding !!AudioFile}">
+                            <TextBlock Text="Volume (0-1)" FontSize="11" />
+                            <NumericUpDown Minimum="0" Maximum="1" Increment="0.05" Value="{Binding Volume}" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Classes="videoCard" Padding="14 12">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+                <Grid Grid.Column="0" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBox Text="{Binding OutputFile}" IsReadOnly="True" PlaceholderText="Choose the output MP4 file" />
+                    <Button Grid.Column="1" Content="OUTPUT..." Command="{Binding ChooseOutputCommand}" />
+                </Grid>
+                <Button Grid.Column="1" Content="CREATE SLIDESHOW" Classes="accent" Command="{Binding CreateCommand}" />
+                <Button Grid.Column="2" Content="CANCEL" Command="{Binding CancelCommand}" />
+                <Button Grid.Column="3" Content="CLEAR" Command="{Binding ClearCommand}" />
+                <Button Grid.Column="4" Content="OPEN" Command="{Binding OpenOutputCommand}" />
+            </Grid>
+        </Border>
+        <StackPanel Grid.Row="3" Spacing="4">
+            <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue}" IsVisible="{Binding IsRunning}" />
+            <TextBlock Text="{Binding StatusMessage}" TextTrimming="CharacterEllipsis" Opacity="0.75" />
+            <Button Content="Configure FFmpeg" HorizontalAlignment="Left" IsVisible="{Binding !IsFfmpegConfigured}" Command="{Binding OpenSettingsCommand}" />
+        </StackPanel>
+    </Grid>
+</UserControl>

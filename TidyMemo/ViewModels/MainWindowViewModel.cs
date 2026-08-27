@@ -51,7 +51,8 @@ public class MainWindowViewModel : ViewModelBase
         ShowHomeCommand = new RelayCommand(() => SelectedModuleIndex = 0);
         ShowImagesCommand = new RelayCommand(() => SelectedModuleIndex = 1);
         ShowVideosCommand = new RelayCommand(() => SelectedModuleIndex = 2);
-        ShowSettingsCommand = new RelayCommand(() => SelectedModuleIndex = 3);
+        ShowSlideTuneCommand = new RelayCommand(() => SelectedModuleIndex = 3);
+        ShowSettingsCommand = new RelayCommand(() => SelectedModuleIndex = 4);
         _exifService = new ExifService();
         RenamerDateTypes = new ObservableCollection<RenamerDateType>
         {
@@ -65,7 +66,10 @@ public class MainWindowViewModel : ViewModelBase
         Settings = new SettingsViewModel(settingsService, dialogService, new FfmpegDownloadService());
         VideoCompressor = new VideoCompressorViewModel(
             new VideoCompressorService(), dialogService, Settings,
-            () => SelectedModuleIndex = 3);
+            () => SelectedModuleIndex = 4);
+        SlideTune = new SlideshowViewModel(
+            new SlideshowService(), _exifService, dialogService, Settings,
+            () => SelectedModuleIndex = 4);
     }
 
     #region Commands
@@ -83,12 +87,14 @@ public class MainWindowViewModel : ViewModelBase
     public ICommand ShowHomeCommand { get; }
     public ICommand ShowImagesCommand { get; }
     public ICommand ShowVideosCommand { get; }
+    public ICommand ShowSlideTuneCommand { get; }
     public ICommand ShowSettingsCommand { get; }
     #endregion
 
     #region Properties
     public SettingsViewModel Settings { get; }
     public VideoCompressorViewModel VideoCompressor { get; }
+    public SlideshowViewModel SlideTune { get; }
 
     public int SelectedModuleIndex
     {
