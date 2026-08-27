@@ -196,14 +196,33 @@ public class VideoCompressorService
             "-map_metadata:s:a", "0:s:a"
         };
 
-        if (!preset.UseEncoderDefaults)
+        var videoEncoder = preset.VideoEncoder
+            ?? (preset.UseEncoderDefaults ? null : "libx264");
+
+        if (videoEncoder is not null)
         {
-            parts.InsertRange(3, new[]
+            var encoderArguments = new List<string>
             {
-                "-vcodec", "libx264",
-                "-crf", preset.Crf.ToString(),
-                "-preset", preset.FfmpegPreset
-            });
+                "-vcodec", videoEncoder
+            };
+
+            if (!preset.UseEncoderDefaults)
+            {
+                encoderArguments.AddRange(new[]
+                {
+                    "-crf", preset.Crf.ToString(),
+                    "-preset", preset.FfmpegPreset
+                });
+            }
+
+            // hvc1 improves H.265 playback compatibility in Apple software and devices.
+            if (videoEncoder == "libx265" &&
+                Path.GetExtension(outputPath).Equals(".mp4", StringComparison.OrdinalIgnoreCase))
+            {
+                encoderArguments.AddRange(new[] { "-tag:v", "hvc1" });
+            }
+
+            parts.InsertRange(3, encoderArguments);
         }
 
         if (!string.IsNullOrEmpty(preset.ScaleFilter))

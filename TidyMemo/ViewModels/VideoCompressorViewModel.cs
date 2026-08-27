@@ -27,6 +27,9 @@ public partial class VideoCompressorViewModel : ViewModelBase
     private VideoCompressionPreset _selectedPreset = null!;
 
     [ObservableProperty]
+    private VideoCodecOption _selectedVideoCodec = null!;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsAdvancedCompressionMode))]
     private bool _useAdvancedCompressionSettings;
 
@@ -84,6 +87,7 @@ public partial class VideoCompressorViewModel : ViewModelBase
     public ObservableCollection<DirectoryInfo> Folders { get; } = new();
     public ObservableCollection<VideoCompressionJobViewModel> Jobs { get; } = new();
     public IReadOnlyList<VideoCompressionPreset> Presets { get; }
+    public IReadOnlyList<VideoCodecOption> VideoCodecs { get; }
     public IReadOnlyList<string> FfmpegPresets { get; } = new[]
     {
         "ultrafast", "superfast", "veryfast", "faster", "fast", "medium",
@@ -142,6 +146,8 @@ public partial class VideoCompressorViewModel : ViewModelBase
 
         Presets = BuildPresets();
         _selectedPreset = Presets[0]; // FFmpeg encoder defaults
+        VideoCodecs = BuildVideoCodecs();
+        _selectedVideoCodec = VideoCodecs[0]; // Preserve every existing preset's behavior
         Operations = BuildOperations();
         _selectedOperation = Operations[0];
 
@@ -350,6 +356,7 @@ public partial class VideoCompressorViewModel : ViewModelBase
         Jobs.Clear();
         SelectedOperation = Operations[0];
         SelectedPreset = Presets[0];
+        SelectedVideoCodec = VideoCodecs[0];
         UseAdvancedCompressionSettings = false;
         CustomCrf = 30;
         CustomFfmpegPreset = "medium";
@@ -450,10 +457,29 @@ public partial class VideoCompressorViewModel : ViewModelBase
             new() { Name = "Social media",         Description = "CRF 28 · veryfast — 720p optimised for online sharing",               Crf = 28, FfmpegPreset = "veryfast",  ScaleFilter = "1280:-2" },
         }.AsReadOnly();
 
+    private static IReadOnlyList<VideoCodecOption> BuildVideoCodecs() =>
+        new List<VideoCodecOption>
+        {
+            new() { Name = "According to preset (default)", Description = "Preserves the current behavior of existing presets", FfmpegEncoder = null },
+            new() { Name = "H.264 (AVC)", Description = "Broad compatibility", FfmpegEncoder = "libx264" },
+            new() { Name = "H.265 (HEVC)", Description = "Smaller files, slower encoding and newer-device compatibility", FfmpegEncoder = "libx265" }
+        }.AsReadOnly();
+
     private VideoCompressionPreset GetCompressionPreset(VideoCompressionJobViewModel job)
     {
         if (!UseAdvancedCompressionSettings)
-            return job.SelectedPreset;
+        {
+            return new VideoCompressionPreset
+            {
+                Name = job.SelectedPreset.Name,
+                Description = job.SelectedPreset.Description,
+                Crf = job.SelectedPreset.Crf,
+                FfmpegPreset = job.SelectedPreset.FfmpegPreset,
+                UseEncoderDefaults = job.SelectedPreset.UseEncoderDefaults,
+                ScaleFilter = job.SelectedPreset.ScaleFilter,
+                VideoEncoder = SelectedVideoCodec.FfmpegEncoder
+            };
+        }
 
         return new VideoCompressionPreset
         {
@@ -462,7 +488,8 @@ public partial class VideoCompressorViewModel : ViewModelBase
             Crf = Math.Clamp(CustomCrf, 0, 51),
             FfmpegPreset = FfmpegPresets.Contains(CustomFfmpegPreset)
                 ? CustomFfmpegPreset
-                : "medium"
+                : "medium",
+            VideoEncoder = SelectedVideoCodec.FfmpegEncoder
         };
     }
 

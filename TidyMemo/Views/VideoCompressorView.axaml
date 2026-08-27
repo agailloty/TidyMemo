@@ -125,6 +125,23 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
 
+                <TextBlock Text="Video codec:" FontWeight="SemiBold"
+                           IsVisible="{Binding IsCompressionMode}" />
+                <ComboBox HorizontalAlignment="Stretch"
+                          IsVisible="{Binding IsCompressionMode}"
+                          ItemsSource="{Binding VideoCodecs}"
+                          SelectedItem="{Binding SelectedVideoCodec, Mode=TwoWay}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:VideoCodecOption">
+                            <StackPanel Margin="2">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Description}" FontSize="11" Opacity="0.65"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
                 <CheckBox Content="Advanced compression settings"
                           IsVisible="{Binding IsCompressionMode}"
                           IsChecked="{Binding UseAdvancedCompressionSettings, Mode=TwoWay}" />
