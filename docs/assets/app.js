@@ -23,9 +23,10 @@ if (os && downloads[os]) {
 }
 
 const shots = {
-  rename: ['assets/screenshot-renamer.svg', "Maquette de l'espace d'organisation de TidyMemo"],
-  metadata: ['assets/screenshot-metadata.svg', "Maquette de l'explorateur de métadonnées de TidyMemo"],
-  video: ['assets/screenshot-video.svg', "Maquette de l'espace de compression vidéo de TidyMemo"]
+  rename: ['assets/screenshot-renamer.svg', "Illustration de l'espace Images de TidyMemo"],
+  metadata: ['assets/screenshot-metadata.svg', "Illustration de l'explorateur de métadonnées de TidyMemo"],
+  video: ['assets/screenshot-video.svg', "Illustration de l'espace Vidéos de TidyMemo"],
+  slideshow: ['assets/screenshot-slidetune.svg', "Illustration de l'espace SlideTune de TidyMemo"]
 };
 document.querySelectorAll('[data-shot]').forEach((tab) => tab.addEventListener('click', () => {
   document.querySelectorAll('[data-shot]').forEach((item) => item.setAttribute('aria-selected', String(item === tab)));
