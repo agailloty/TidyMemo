@@ -43,6 +43,11 @@ public sealed class SlideshowService
                 progress?.Report(new SlideshowProgress(0, "Compositing images with ImageMagick..."));
                 images = await CompositeWithImageMagickAsync(options, tempRoot, progress, cancellationToken);
             }
+            else
+            {
+                progress?.Report(new SlideshowProgress(0, "Preparing images..."));
+                images = await NormalizeImagesAsync(options, tempRoot, progress, cancellationToken);
+            }
 
             var manifest = Path.Combine(tempRoot, "images.ffconcat");
             await WriteManifestAsync(manifest, images, options.ImageDuration, cancellationToken);
@@ -121,11 +126,17 @@ public sealed class SlideshowService
     {
         var w = o.Width; var h = o.Height;
         if (o.Type == SlideshowType.Basic || alreadyComposited)
-            return $"[0:v]scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[video]";
+            return $"[0:v]fps={o.FrameRate},scale={w}:{h}:force_original_aspect_ratio=decrease," +
+                   $"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[video]";
 
         var sw = Math.Max(2, (int)(w * o.ImageScaling) / 2 * 2);
         var sh = Math.Max(2, (int)(h * o.ImageScaling) / 2 * 2);
-        var foreground = $"[0:v]scale={sw}:{sh}:force_original_aspect_ratio=decrease,pad={sw}:{sh}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[fg]";
+        // Keep the foreground at its actual aspect-ratio-preserving size. Padding it to the
+        // scale box here would make that padding part of the overlay (and used to produce the
+        // black bars visible even when a white/gradient/image background was selected).
+        // The fps filter turns the concat demuxer's sparse still-image timestamps into a
+        // continuous foreground stream, avoiding background-only frames at image boundaries.
+        var foreground = $"[0:v]setpts=PTS-STARTPTS,fps={o.FrameRate},scale={sw}:{sh}:force_original_aspect_ratio=decrease,setsar=1[fg]";
         if (backgroundInput)
             return $"{foreground};[1:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},setsar=1[bg];[bg][fg]overlay=(W-w)/2:(H-h)/2:shortest=1[video]";
         if (o.BackgroundType == SlideshowBackgroundType.SolidColor)
@@ -174,6 +185,46 @@ public sealed class SlideshowService
             result.Add(target);
             progress?.Report(new SlideshowProgress((i + 1d) / o.Images.Count * 25, $"Composited {i + 1}/{o.Images.Count} images"));
         }
+        return result;
+    }
+
+    private static async Task<IReadOnlyList<string>> NormalizeImagesAsync(
+        SlideshowOptions o, string tempRoot, IProgress<SlideshowProgress>? progress, CancellationToken token)
+    {
+        // The concat demuxer expects every file to describe the same kind of video stream.
+        // Feeding mixed JPEG/PNG/WebP/TIFF files directly can make FFmpeg decode only some
+        // entries, leaving a background-only (white, for example) slide. Convert each source
+        // to an identically sized RGBA PNG first; transparent padding lets the selected
+        // slideshow background show through around portrait or landscape photos.
+        var output = Path.Combine(tempRoot, "normalized");
+        Directory.CreateDirectory(output);
+        var isBackground = o.Type == SlideshowType.Background;
+        var width = isBackground
+            ? Math.Max(2, (int)(o.Width * o.ImageScaling) / 2 * 2)
+            : o.Width;
+        var height = isBackground
+            ? Math.Max(2, (int)(o.Height * o.ImageScaling) / 2 * 2)
+            : o.Height;
+        var paddingColor = isBackground ? "black@0" : "black";
+        var result = new List<string>(o.Images.Count);
+
+        for (var i = 0; i < o.Images.Count; i++)
+        {
+            token.ThrowIfCancellationRequested();
+            var target = Path.Combine(output, $"IMG_{i + 1:D6}.png");
+            var psi = NewProcess(o.FfmpegPath);
+            Add(psi, "-hide_banner", "-i", o.Images[i], "-vf",
+                $"scale={width}:{height}:force_original_aspect_ratio=decrease,format=rgba," +
+                $"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color={paddingColor}",
+                "-frames:v", "1", "-y", target);
+            var run = await RunToolAsync(psi, token);
+            if (run.ExitCode != 0 || !File.Exists(target))
+                throw new InvalidOperationException($"Could not prepare {Path.GetFileName(o.Images[i])}: {LastUsefulError(run.Error)}");
+            result.Add(target);
+            progress?.Report(new SlideshowProgress((i + 1d) / o.Images.Count * 20,
+                $"Prepared {i + 1}/{o.Images.Count} images"));
+        }
+
         return result;
     }
 
