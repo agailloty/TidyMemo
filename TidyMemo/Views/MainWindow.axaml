@@ -1,0 +1,345 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:TidyMemo.ViewModels"
+        xmlns:views="using:TidyMemo.Views"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1050" d:DesignHeight="720"
+        x:Class="TidyMemo.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/TidyMemo.ico"
+        WindowStartupLocation="CenterScreen"
+        MinWidth="900" MinHeight="620"
+        Width="1100" Height="760"
+        Title="TidyMemo">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel />
+    </Design.DataContext>
+
+    <Window.Styles>
+        <Style Selector="ListBoxItem">
+            <Setter Property="DataContext" Value="{Binding}" />
+        </Style>
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Padding" Value="12 6" />
+        </Style>
+    </Window.Styles>
+
+    <!-- Root Panel allows the overlay to sit above everything -->
+    <Panel>
+
+        <DockPanel Margin="5" LastChildFill="True">
+
+            <!-- ── Main TabControl ────────────────────────────────────────── -->
+            <TabControl SelectedIndex="{Binding SelectedModuleIndex, Mode=TwoWay}">
+
+                <TabItem Header="Home">
+                    <Grid>
+                        <StackPanel Margin="36" Spacing="24" MaxWidth="900"
+                                    HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="20">
+                                <Button Grid.Column="0" Classes="moduleCard"
+                                        Command="{Binding ShowImagesCommand}">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="📷" FontSize="42" />
+                                        <TextBlock Text="Images" FontSize="22" FontWeight="Bold" />
+                                        <TextBlock Text="Rename photo collections from dates and EXIF metadata, with a preview before applying changes."
+                                                   TextWrapping="Wrap" Opacity="0.7" />
+                                        <TextBlock Text="OPEN IMAGE WORKSPACE  →"
+                                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                   FontWeight="SemiBold" Margin="0 8 0 0" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Grid.Column="2" Classes="moduleCard"
+                                        Command="{Binding ShowSlideTuneCommand}">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="▶" FontSize="42" />
+                                        <TextBlock Text="SlideTune" FontSize="22" FontWeight="Bold" />
+                                        <TextBlock Text="Create MP4 slideshows from photos, with music and customizable backgrounds."
+                                                   TextWrapping="Wrap" Opacity="0.7" />
+                                        <TextBlock Text="OPEN SLIDETUNE  →"
+                                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                   FontWeight="SemiBold" Margin="0 8 0 0" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Grid.Column="1" Classes="moduleCard"
+                                        Command="{Binding ShowVideosCommand}">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="🎬" FontSize="42" />
+                                        <TextBlock Text="Videos" FontSize="22" FontWeight="Bold" />
+                                        <TextBlock Text="Compress one video or a complete folder using presets adapted to quality, size and sharing."
+                                                   TextWrapping="Wrap" Opacity="0.7" />
+                                        <TextBlock Text="OPEN VIDEO WORKSPACE  →"
+                                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                   FontWeight="SemiBold" Margin="0 8 0 0" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <Border Classes="card" Padding="14">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel>
+                                        <TextBlock Text="Application settings" FontWeight="SemiBold" />
+                                        <TextBlock Text="Configure FFmpeg and the video output folder."
+                                                   Opacity="0.65" FontSize="12" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="OPEN SETTINGS"
+                                            Command="{Binding ShowSettingsCommand}" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+
+                <!-- Tab 1 : Photo Renamer -->
+                <TabItem Header="📷  Images">
+                    <Grid Margin="5" ColumnDefinitions="*,2*" RowDefinitions="*,5*,*,Auto">
+
+                        <StackPanel Grid.Column="0" Grid.Row="1" Margin="0 0 30 0" Grid.RowSpan="2">
+                            <Label Margin="0 0 0 10" FontWeight="ExtraBold" Content="Add folders" FontSize="20" />
+                            <TextBlock TextWrapping="Wrap" Margin="0 0 0 10"
+                                       Text="Add the folders that contains your photos" />
+                            <ScrollViewer MaxHeight="350" HorizontalScrollBarVisibility="Disabled">
+                                <ListBox ItemsSource="{Binding PathFolders}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="1">
+                                                <Grid ColumnDefinitions="*, Auto">
+                                                    <TextBlock Grid.Column="0"
+                                                               ToolTip.Tip="{Binding FullName}"
+                                                               Text="{Binding Name}"
+                                                               TextWrapping="WrapWithOverflow" />
+                                                    <Button Grid.Column="1"
+                                                            Command="{Binding $parent[views:MainWindow].ViewModel.RemoveFolderCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            VerticalAlignment="Top" HorizontalAlignment="Right">
+                                                        <Button.ContentTemplate>
+                                                            <DataTemplate>
+                                                                <Image Margin="0" Width="15" Height="15"
+                                                                       VerticalAlignment="Top"
+                                                                       HorizontalAlignment="Right"
+                                                                       Source="/Assets/deletebtn.png" />
+                                                            </DataTemplate>
+                                                        </Button.ContentTemplate>
+                                                    </Button>
+                                                </Grid>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </ScrollViewer>
+                        </StackPanel>
+
+                        <CheckBox Grid.Column="0" Grid.Row="2"
+                                  Content="Include subfolders"
+                                  IsChecked="{Binding IncludeSubfolders, Mode=TwoWay}"
+                                  Margin="0 0 0 4" />
+                        <Button Grid.Column="0" Grid.Row="3"
+                                Content="ADD FOLDER" FontSize="16"
+                                Command="{Binding AddFolderCommand}" />
+                        <StackPanel Grid.Column="1" Grid.Row="3"
+                                    IsVisible="{Binding HasImages}"
+                                    HorizontalAlignment="Right"
+                                    Orientation="Horizontal" Spacing="8">
+                            <Button FontSize="16" Content="CLEAR"
+                                    Command="{Binding ClearImagesCommand}" />
+                            <Button IsEnabled="{Binding IsRenameEnabled}"
+                                    FontSize="16" Content="RENAME"
+                                    Command="{Binding RenameCommand}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Grid.Row="3"
+                                    IsVisible="{Binding HasImages}"
+                                    VerticalAlignment="Bottom"
+                                    HorizontalAlignment="Center"
+                                    Orientation="Horizontal">
+                            <TextBlock Text="Image count : " />
+                            <TextBlock Text="{Binding TotalImagesCount}" />
+                        </StackPanel>
+
+                        <Grid Grid.Column="1" Grid.Row="0" RowSpan="3"
+                              IsVisible="{Binding HasImages}"
+                              ColumnDefinitions="1*,2*"
+                              RowDefinitions="Auto,Auto,3*">
+                            <ComboBox IsVisible="{Binding !IsCustomSelected}"
+                                      Grid.Column="0" Grid.Row="0"
+                                      Margin="0 2 0 2"
+                                      ItemsSource="{Binding RenamerDateTypes}"
+                                      SelectedItem="{Binding SelectedRenamerDateType, Mode=TwoWay}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+
+                            <StackPanel Grid.Column="0" Grid.Row="1">
+                                <ComboBox VerticalAlignment="Top" HorizontalAlignment="Stretch"
+                                          ItemsSource="{Binding BuiltInRenamerPatterns}"
+                                          SelectedItem="{Binding SelectedDateRenamerPattern, Mode=TwoWay}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock ToolTip.Tip="{Binding Description}"
+                                                       Text="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+
+                                <Button Content="Exif Explorer" VerticalAlignment="Bottom" Margin="0 5 0 0"
+                                        Command="{Binding ShowExifExplorerCommand}"
+                                        IsVisible="{Binding IsCustomSelected}" />
+
+                                <CheckBox Content="Organize into folders"
+                                          IsChecked="{Binding OrganizeIntoFolders, Mode=TwoWay}"
+                                          Margin="0 12 0 4" />
+                                <StackPanel IsVisible="{Binding OrganizeIntoFolders}" Spacing="4">
+                                    <TextBlock Text="Folder hierarchy" Opacity="0.7" />
+                                    <TextBox Text="{Binding FolderPattern, Mode=TwoWay}"
+                                             PlaceholderText="%year%/%month%" />
+                                    <TextBlock Text="Tokens: %year%, %month%, %monthname% or any EXIF token"
+                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" />
+                                    <Button Content="UPDATE PREVIEW"
+                                            Command="{Binding ValidateCustomFormatCommand}" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal">
+                                <TextBox Margin="5 0 5 0" VerticalAlignment="Top"
+                                         IsVisible="{Binding IsSelectExifVisible}"
+                                         Text="{Binding CustomFormat}"
+                                         MinWidth="250" MaxWidth="350" />
+                                <Button Content="OK" HorizontalAlignment="Right"
+                                        VerticalAlignment="Top"
+                                        Command="{Binding ValidateCustomFormatCommand}"
+                                        IsVisible="{Binding IsSelectExifVisible}" />
+                            </StackPanel>
+
+                            <StackPanel IsVisible="{Binding IsCustomDateFormat}"
+                                        Grid.Column="1" Grid.Row="1" Orientation="Horizontal">
+                                <TextBox Margin="5 0 5 0" VerticalAlignment="Top"
+                                         Text="{Binding CustomDateFormat}"
+                                         MinWidth="250" MaxWidth="350" />
+                                <Button Content="OK" HorizontalAlignment="Right"
+                                        VerticalAlignment="Top"
+                                        Command="{Binding ValidateCustomFormatCommand}" />
+                            </StackPanel>
+
+                            <views:RenamePreviewer Grid.Column="0" Grid.Row="2"
+                                                   Margin="0 40 0 0"
+                                                   Grid.ColumnSpan="2" />
+                        </Grid>
+                    </Grid>
+                </TabItem>
+
+                <!-- Tab 2 : Video Compressor (visible only when feature is enabled + ffmpeg is configured) -->
+                <TabItem Header="🎬  Videos">
+                    <views:VideoCompressorView DataContext="{Binding VideoCompressor}" />
+                </TabItem>
+
+                <TabItem Header="▶  SlideTune">
+                    <views:SlideshowView DataContext="{Binding SlideTune}" />
+                </TabItem>
+
+                <!-- Tab 4 : Settings -->
+                <TabItem Header="⚙  Settings">
+                    <ScrollViewer Padding="10">
+                        <StackPanel Spacing="20" MaxWidth="600">
+
+                            <!-- ── Video Compression ──────────────────────── -->
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Video Compression"
+                                           FontWeight="ExtraBold" FontSize="16" />
+                                <TextBlock TextWrapping="Wrap" Opacity="0.7"
+                                           Text="This feature uses ffmpeg to reduce video file sizes. It is disabled by default. A valid ffmpeg installation is required to enable it." />
+
+                                <!-- ffmpeg path -->
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="0 4 0 0">
+                                    <TextBlock Grid.Column="0"
+                                               Text="ffmpeg path:"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"
+                                               Margin="0 0 10 0" />
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding Settings.FfmpegPath, Mode=TwoWay}"
+                                             PlaceholderText="Path to ffmpeg.exe…"
+                                             VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2"
+                                               Margin="8 0 0 0"
+                                               VerticalAlignment="Center"
+                                               FontSize="18"
+                                               IsVisible="{Binding Settings.IsFfmpegConfigured}"
+                                               Text="✓" Foreground="Green"
+                                               ToolTip.Tip="ffmpeg found and valid" />
+                                    <TextBlock Grid.Column="2"
+                                               Margin="8 0 0 0"
+                                               VerticalAlignment="Center"
+                                               FontSize="18"
+                                               IsVisible="{Binding !Settings.IsFfmpegConfigured}"
+                                               Text="✗" Foreground="OrangeRed"
+                                               ToolTip.Tip="Path not set or executable not found" />
+                                    <Button Grid.Column="3"
+                                            Margin="6 0 0 0"
+                                            Content="Browse…"
+                                            Command="{Binding Settings.BrowseFfmpegCommand}" />
+                                </Grid>
+
+                                <StackPanel Spacing="6">
+                                    <Button HorizontalAlignment="Left"
+                                            Content="{Binding Settings.DetectedPlatform, StringFormat='Download ffmpeg for {0}'}"
+                                            Command="{Binding Settings.DownloadFfmpegCommand}" />
+                                    <ProgressBar Minimum="0" Maximum="100"
+                                                 Value="{Binding Settings.FfmpegDownloadProgress}"
+                                                 IsVisible="{Binding Settings.IsDownloadingFfmpeg}"
+                                                 Height="6" />
+                                    <TextBlock Text="{Binding Settings.FfmpegDownloadStatus}"
+                                               TextWrapping="Wrap" Opacity="0.7" />
+                                    <TextBlock Text="Downloads a platform-specific static build from the ffmpeg-static project. The existing path above remains available."
+                                               TextWrapping="Wrap" Opacity="0.6" FontStyle="Italic" />
+                                </StackPanel>
+
+                                <!-- Enable toggle -->
+                                <ToggleSwitch IsChecked="{Binding Settings.IsVideoCompressionEnabled, Mode=TwoWay}"
+                                             IsEnabled="{Binding Settings.IsFfmpegConfigured}"
+                                             OnContent="Enabled"
+                                             OffContent="Disabled"
+                                             Margin="0 4 0 0" />
+                                <TextBlock IsVisible="{Binding !Settings.IsFfmpegConfigured}"
+                                           Opacity="0.6" FontStyle="Italic" TextWrapping="Wrap"
+                                           Text="⚠ Set a valid ffmpeg path above to enable this feature." />
+                            </StackPanel>
+
+                            <!-- ── Output ─────────────────────────────────── -->
+                            <StackPanel Spacing="8"
+                                        IsVisible="{Binding Settings.IsVideoCompressionEnabled}">
+                                <TextBlock Text="Output"
+                                           FontWeight="ExtraBold" FontSize="16" />
+                                <Grid ColumnDefinitions="Auto,*">
+                                    <TextBlock Grid.Column="0"
+                                               Text="Output subfolder name:"
+                                               FontWeight="SemiBold"
+                                               VerticalAlignment="Center"
+                                               Margin="0 0 10 0" />
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding Settings.OutputSubfolderName, Mode=TwoWay}"
+                                             PlaceholderText="e.g. Final" />
+                                </Grid>
+                                <TextBlock Opacity="0.6" FontStyle="Italic" TextWrapping="Wrap"
+                                           Text="Compressed videos are saved in a subfolder with this name inside the source folder." />
+                            </StackPanel>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+            </TabControl>
+        </DockPanel>
+
+        <!-- Overlay (must be last child so it renders above everything) -->
+        <Grid IsVisible="False" x:Name="MainWindowOverlay"
+              Background="Black" Opacity="0.3" ZIndex="1000" />
+
+    </Panel>
+</Window>

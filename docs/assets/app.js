@@ -1,7 +1,7 @@
 const downloads = {
-  windows: { label: 'Windows', href: 'https://github.com/agailloty/ExifRenamer/releases/latest/download/ExifRenamer-windows-x64-Setup.exe', icon: '⊞' },
-  macos: { label: 'macOS', href: 'https://github.com/agailloty/ExifRenamer/releases/latest', icon: '●' },
-  linux: { label: 'Linux', href: 'https://github.com/agailloty/ExifRenamer/releases/latest/download/ExifRenamer-linux-x64.deb', icon: '◆' }
+  windows: { label: 'Windows', href: 'https://github.com/agailloty/TidyMemo/releases/latest/download/TidyMemo-windows-x64-Setup.exe', icon: '⊞' },
+  macos: { label: 'macOS', href: 'https://github.com/agailloty/TidyMemo/releases/latest', icon: '●' },
+  linux: { label: 'Linux', href: 'https://github.com/agailloty/TidyMemo/releases/latest/download/TidyMemo-linux-x64.deb', icon: '◆' }
 };
 
 function detectOS() {
@@ -23,9 +23,10 @@ if (os && downloads[os]) {
 }
 
 const shots = {
-  rename: ['assets/screenshot-renamer.svg', "Maquette de l'écran de renommage d'ExifRenamer"],
-  metadata: ['assets/screenshot-metadata.svg', "Maquette de l'explorateur de métadonnées d'ExifRenamer"],
-  video: ['assets/screenshot-video.svg', "Maquette de l'écran de compression vidéo d'ExifRenamer"]
+  rename: ['assets/screenshot-renamer.svg', "Illustration de l'espace Images de TidyMemo"],
+  metadata: ['assets/screenshot-metadata.svg', "Illustration de l'explorateur de métadonnées de TidyMemo"],
+  video: ['assets/screenshot-video.svg', "Illustration de l'espace Vidéos de TidyMemo"],
+  slideshow: ['assets/screenshot-slidetune.svg', "Illustration de l'espace SlideTune de TidyMemo"]
 };
 document.querySelectorAll('[data-shot]').forEach((tab) => tab.addEventListener('click', () => {
   document.querySelectorAll('[data-shot]').forEach((item) => item.setAttribute('aria-selected', String(item === tab)));
