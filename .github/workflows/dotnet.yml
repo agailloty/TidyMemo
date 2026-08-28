@@ -50,7 +50,10 @@ jobs:
             --self-contained true `
             --output publish/windows-x64 `
             -p:Version=${{ steps.version.outputs.version }} `
+            -p:DebugSymbols=false `
+            -p:DebugType=None `
             -p:PublishTrimmed=true
+          Get-ChildItem -Path publish/windows-x64 -Filter *.pdb -Recurse | Remove-Item -Force
       - name: Create portable archive
         shell: pwsh
         run: |
@@ -123,6 +126,8 @@ jobs:
           --self-contained true
           --output publish/${{ matrix.runtime }}
           -p:Version=${{ steps.version.outputs.version }}
+          -p:DebugSymbols=false
+          -p:DebugType=None
           -p:PublishTrimmed=true
       - name: Create app bundle, ZIP and DMG
         shell: bash
@@ -172,6 +177,8 @@ jobs:
           --self-contained true
           --output publish/linux-x64
           -p:Version=${{ steps.version.outputs.version }}
+          -p:DebugSymbols=false
+          -p:DebugType=None
           -p:PublishTrimmed=true
       - name: Create DEB and portable archive
         shell: bash

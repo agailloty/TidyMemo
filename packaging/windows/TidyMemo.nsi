@@ -53,7 +53,7 @@ VIAddVersionKey /LANG=1033 "FileVersion" "${APP_VERSION}"
 
 Section "TidyMemo" SEC_MAIN
   SetOutPath "$INSTDIR"
-  File /r "${PUBLISH_DIR}\*"
+  File /r /x *.pdb "${PUBLISH_DIR}\*"
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
