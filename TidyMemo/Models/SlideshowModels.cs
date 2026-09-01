@@ -44,6 +44,9 @@ public sealed class SlideshowOptions
     public bool UseEnhancedBackgroundProcessing { get; init; } = true;
     public bool PreferImageMagick { get; init; }
     public string ImageMagickPath { get; init; } = "magick";
+    public TransitionMode TransitionMode { get; init; } = TransitionMode.None;
+    public string TransitionId { get; init; } = "fade";
+    public double TransitionDuration { get; init; } = 0.8;
 }
 
 public sealed record SlideshowProgress(double Percentage, string Message);

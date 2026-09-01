@@ -48,6 +48,9 @@ public partial class SettingsViewModel : ViewModelBase
         : "The configured FFmpeg executable could not be found. Select another file or download it again.";
 
     public string DetectedPlatform => _ffmpegDownloadService.PlatformDescription;
+    public TransitionMode SlideshowTransitionMode => _appSettings.SlideshowTransitionMode;
+    public string SlideshowTransitionId => _appSettings.SlideshowTransitionId;
+    public double SlideshowTransitionDuration => _appSettings.SlideshowTransitionDuration;
 
     public SettingsViewModel(
         SettingsService settingsService,
@@ -111,5 +114,13 @@ public partial class SettingsViewModel : ViewModelBase
         _appSettings.OutputSubfolderName = OutputSubfolderName;
         _appSettings.IsVideoCompressionEnabled = IsVideoCompressionEnabled;
         _settingsService.Save(_appSettings);
+    }
+
+    public void SaveSlideshowTransition(TransitionMode mode, string transitionId, double duration)
+    {
+        _appSettings.SlideshowTransitionMode = mode;
+        _appSettings.SlideshowTransitionId = transitionId;
+        _appSettings.SlideshowTransitionDuration = duration;
+        PersistSettings();
     }
 }

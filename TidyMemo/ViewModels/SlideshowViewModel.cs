@@ -37,6 +37,8 @@ public partial class SlideshowViewModel : ViewModelBase
     public IReadOnlyList<SlideshowGradientDirection> GradientDirections { get; } = Enum.GetValues<SlideshowGradientDirection>();
     public IReadOnlyList<SlideshowSortMode> SortModes { get; } = Enum.GetValues<SlideshowSortMode>();
     public IReadOnlyList<string> EncoderPresets { get; } = new[] { "ultrafast", "veryfast", "fast", "medium", "slow", "slower" };
+    public IReadOnlyList<TransitionMode> TransitionModes { get; } = Enum.GetValues<TransitionMode>();
+    public IReadOnlyList<TransitionDefinition> Transitions { get; } = TransitionCatalog.All;
 
     [ObservableProperty] private SlideshowResolution _selectedResolution;
     [ObservableProperty] private SlideshowType _selectedType = SlideshowType.Basic;
@@ -66,6 +68,9 @@ public partial class SlideshowViewModel : ViewModelBase
     [ObservableProperty] private bool _useEnhancedBackgroundProcessing = true;
     [ObservableProperty] private bool _preferImageMagick;
     [ObservableProperty] private string _imageMagickPath = "magick";
+    [ObservableProperty] private TransitionMode _selectedTransitionMode;
+    [ObservableProperty] private TransitionDefinition _selectedTransition;
+    [ObservableProperty] private double _transitionDuration;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanCreate))] private bool _isRunning;
     [ObservableProperty] private double _progressValue;
     [ObservableProperty] private string _statusMessage = "Add images to begin.";
@@ -75,7 +80,17 @@ public partial class SlideshowViewModel : ViewModelBase
     public bool IsImageBackground => IsBackgroundMode && SelectedBackgroundType == SlideshowBackgroundType.Image;
     public bool IsGradientBackground => IsBackgroundMode && SelectedBackgroundType == SlideshowBackgroundType.Gradient;
     public bool CanCreate => HasImages && !IsRunning && _settings.IsFfmpegConfigured && !string.IsNullOrWhiteSpace(OutputFile);
-    public string ImageCountText => $"{Images.Count} image(s) - approximately {TimeSpan.FromSeconds(Images.Count * ImageDuration):hh\\:mm\\:ss}";
+    public bool IsTransitionEnabled => SelectedTransitionMode != TransitionMode.None;
+    public string ImageCountText
+    {
+        get
+        {
+            var seconds = Images.Count * ImageDuration;
+            if (IsTransitionEnabled && Images.Count > 1 && TransitionDuration < ImageDuration)
+                seconds -= (Images.Count - 1) * TransitionDuration;
+            return $"{Images.Count} image(s) - approximately {TimeSpan.FromSeconds(Math.Max(0, seconds)):hh\\:mm\\:ss}";
+        }
+    }
     public bool IsFfmpegConfigured => _settings.IsFfmpegConfigured;
 
     public SlideshowViewModel(SlideshowService service, ExifService exifService, IDialogService dialogs,
@@ -83,6 +98,10 @@ public partial class SlideshowViewModel : ViewModelBase
     {
         _service = service; _exifService = exifService; _dialogs = dialogs; _settings = settings;
         _selectedResolution = Resolutions[0];
+        _selectedTransitionMode = settings.SlideshowTransitionMode;
+        _selectedTransition = TransitionCatalog.Find(settings.SlideshowTransitionId) ?? TransitionCatalog.Fade;
+        _transitionDuration = settings.SlideshowTransitionDuration is >= 0.1 and <= 3
+            ? settings.SlideshowTransitionDuration : 0.8;
         AddImagesCommand = new AsyncRelayCommand(AddImagesAsync);
         AddFolderCommand = new AsyncRelayCommand(AddFolderAsync);
         RemoveImageCommand = new RelayCommand<SlideshowItemViewModel>(RemoveImage);
@@ -173,7 +192,9 @@ public partial class SlideshowViewModel : ViewModelBase
             EnableBorder = EnableBorder, BorderWidth = BorderWidth, BorderColor = BorderColor,
             EnableShadow = EnableShadow, ShadowOffsetX = ShadowOffsetX, ShadowOffsetY = ShadowOffsetY,
             ShadowBlur = ShadowBlur, ShadowOpacity = ShadowOpacity,
-            PreferImageMagick = PreferImageMagick, ImageMagickPath = ImageMagickPath
+            PreferImageMagick = PreferImageMagick, ImageMagickPath = ImageMagickPath,
+            TransitionMode = SelectedTransitionMode, TransitionId = SelectedTransition.Id,
+            TransitionDuration = TransitionDuration
         }, progress, _cancellation.Token);
         StatusMessage = result.Success ? $"Slideshow created: {result.OutputFile}" : result.ErrorMessage ?? "Slideshow creation failed.";
         IsRunning = false; _cancellation.Dispose(); _cancellation = null; OpenOutputCommand.NotifyCanExecuteChanged();
@@ -187,6 +208,23 @@ public partial class SlideshowViewModel : ViewModelBase
     partial void OnSelectedBackgroundTypeChanged(SlideshowBackgroundType value) { OnPropertyChanged(nameof(IsImageBackground)); OnPropertyChanged(nameof(IsGradientBackground)); }
     partial void OnSelectedSortModeChanged(SlideshowSortMode value) => SortImages();
     partial void OnImageDurationChanged(double value) => OnPropertyChanged(nameof(ImageCountText));
+    partial void OnSelectedTransitionModeChanged(TransitionMode value)
+    {
+        OnPropertyChanged(nameof(IsTransitionEnabled));
+        OnPropertyChanged(nameof(ImageCountText));
+        PersistTransitionSettings();
+    }
+    partial void OnSelectedTransitionChanged(TransitionDefinition value) => PersistTransitionSettings();
+    partial void OnTransitionDurationChanged(double value)
+    {
+        OnPropertyChanged(nameof(ImageCountText));
+        PersistTransitionSettings();
+    }
+    private void PersistTransitionSettings()
+    {
+        if (SelectedTransition is not null)
+            _settings.SaveSlideshowTransition(SelectedTransitionMode, SelectedTransition.Id, TransitionDuration);
+    }
     partial void OnOutputFileChanged(string value) { OnPropertyChanged(nameof(CanCreate)); CreateCommand.NotifyCanExecuteChanged(); OpenOutputCommand.NotifyCanExecuteChanged(); }
     partial void OnIsRunningChanged(bool value) { OnPropertyChanged(nameof(CanCreate)); CreateCommand.NotifyCanExecuteChanged(); CancelCommand.NotifyCanExecuteChanged(); ClearCommand.NotifyCanExecuteChanged(); }
 }

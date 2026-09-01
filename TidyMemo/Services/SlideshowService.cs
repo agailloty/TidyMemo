@@ -50,12 +50,35 @@ public sealed class SlideshowService
                 images = await NormalizeImagesAsync(options, tempRoot, progress, cancellationToken);
             }
 
-            var manifest = Path.Combine(tempRoot, "images.ffconcat");
-            await WriteManifestAsync(manifest, images, options.ImageDuration, cancellationToken);
             Directory.CreateDirectory(Path.GetDirectoryName(options.OutputFile)!);
 
-            var startInfo = BuildFfmpegStartInfo(options, manifest, useImageMagick);
-            var totalDuration = images.Count * options.ImageDuration;
+            ProcessStartInfo startInfo;
+            double totalDuration;
+            if (options.TransitionMode == TransitionMode.None || images.Count == 1)
+            {
+                var manifest = Path.Combine(tempRoot, "images.ffconcat");
+                await WriteManifestAsync(manifest, images, options.ImageDuration, cancellationToken);
+                startInfo = BuildFfmpegStartInfo(options, manifest, useImageMagick);
+                totalDuration = images.Count * options.ImageDuration;
+            }
+            else
+            {
+                progress?.Report(new SlideshowProgress(20, "Checking FFmpeg transition support..."));
+                var capabilities = await new FfmpegCapabilitiesService().DetectAsync(options.FfmpegPath, cancellationToken);
+                if (!capabilities.HasXfade)
+                    return SlideshowResult.Failed("This FFmpeg executable does not provide the xfade video filter. " + LastUsefulError(capabilities.Diagnostic));
+                var selected = TransitionCatalog.Find(options.TransitionId) ?? TransitionCatalog.Fade;
+                if (options.TransitionMode == TransitionMode.Native && !capabilities.XfadeTransitions.Contains(selected.FfmpegName))
+                    return SlideshowResult.Failed($"FFmpeg does not support the '{selected.DisplayName}' xfade transition ({selected.FfmpegName}).");
+
+                var slides = await RenderFinalSlidesAsync(options, images, tempRoot, useImageMagick, progress, cancellationToken);
+                var transitions = TransitionGraphBuilder.SelectTransitions(slides.Count - 1, options.TransitionMode,
+                    selected, capabilities.XfadeTransitions);
+                var timeline = SlideshowTimeline.Create(slides.Count, options.ImageDuration,
+                    Enumerable.Repeat(options.TransitionDuration, slides.Count - 1).ToArray());
+                startInfo = BuildTransitionStartInfo(options, slides, transitions, timeline.TotalDuration);
+                totalDuration = timeline.TotalDuration;
+            }
             return await RunFfmpegAsync(startInfo, options.OutputFile, totalDuration, progress, cancellationToken);
         }
         catch (OperationCanceledException)
@@ -87,6 +110,10 @@ public sealed class SlideshowService
             return "Shadow offsets must be between -200 and 200 pixels.";
         if (o.ShadowBlur is < 0 or > 100) return "Shadow blur must be between 0 and 100 pixels.";
         if (o.ShadowOpacity is < 0 or > 1) return "Shadow opacity must be between 0 and 1.";
+        if (o.TransitionMode != TransitionMode.None && (o.TransitionDuration is < 0.1 or > 3))
+            return "Transition duration must be between 0.1 and 3 seconds.";
+        if (o.TransitionMode != TransitionMode.None && o.Images.Count > 1 && o.TransitionDuration >= o.ImageDuration)
+            return "Transition duration must be shorter than the duration of each image.";
         if (o.EnableBorder && !IsValidColor(o.BorderColor)) return "Border color must use the #RRGGBB format.";
         if (!string.IsNullOrWhiteSpace(o.AudioFile) && !File.Exists(o.AudioFile)) return "The selected audio file cannot be found.";
         if (o.Type == SlideshowType.Background && o.BackgroundType == SlideshowBackgroundType.Image && !File.Exists(o.BackgroundImage))
@@ -126,6 +153,26 @@ public sealed class SlideshowService
         Add(psi, "-r", o.FrameRate.ToString(CultureInfo.InvariantCulture), "-c:v", "libx264", "-crf",
             o.Quality.ToString(CultureInfo.InvariantCulture), "-preset", o.EncoderPreset,
             "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-progress", "pipe:1", "-nostats", "-y", o.OutputFile);
+        return psi;
+    }
+
+    private static ProcessStartInfo BuildTransitionStartInfo(SlideshowOptions o, IReadOnlyList<string> slides,
+        IReadOnlyList<TransitionDefinition> transitions, double totalDuration)
+    {
+        var psi = NewProcess(o.FfmpegPath);
+        Add(psi, "-hide_banner");
+        foreach (var slide in slides)
+            Add(psi, "-framerate", o.FrameRate.ToString(CultureInfo.InvariantCulture), "-loop", "1", "-t",
+                o.ImageDuration.ToString("0.###", CultureInfo.InvariantCulture), "-i", slide);
+        if (!string.IsNullOrWhiteSpace(o.AudioFile)) Add(psi, "-stream_loop", "-1", "-i", o.AudioFile!);
+        Add(psi, "-filter_complex", TransitionGraphBuilder.Build(slides.Count, o.ImageDuration,
+            o.TransitionDuration, o.FrameRate, transitions), "-map", "[video]");
+        if (!string.IsNullOrWhiteSpace(o.AudioFile))
+            Add(psi, "-map", $"{slides.Count}:a:0", "-af", $"volume={o.Volume.ToString("0.###", CultureInfo.InvariantCulture)}",
+                "-c:a", "aac", "-b:a", "192k");
+        Add(psi, "-t", totalDuration.ToString("0.###", CultureInfo.InvariantCulture), "-c:v", "libx264", "-crf",
+            o.Quality.ToString(CultureInfo.InvariantCulture), "-preset", o.EncoderPreset, "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart", "-progress", "pipe:1", "-nostats", "-y", o.OutputFile);
         return psi;
     }
 
@@ -239,6 +286,33 @@ public sealed class SlideshowService
         return result;
     }
 
+    private static async Task<IReadOnlyList<string>> RenderFinalSlidesAsync(SlideshowOptions o,
+        IReadOnlyList<string> preparedImages, string tempRoot, bool alreadyComposited,
+        IProgress<SlideshowProgress>? progress, CancellationToken token)
+    {
+        if (o.Type == SlideshowType.Basic || alreadyComposited) return preparedImages;
+        var output = Path.Combine(tempRoot, "slides");
+        Directory.CreateDirectory(output);
+        var result = new List<string>(preparedImages.Count);
+        for (var i = 0; i < preparedImages.Count; i++)
+        {
+            token.ThrowIfCancellationRequested();
+            var target = Path.Combine(output, $"SLIDE_{i + 1:D6}.png");
+            var psi = NewProcess(o.FfmpegPath);
+            Add(psi, "-hide_banner", "-i", preparedImages[i]);
+            var backgroundInput = o.BackgroundType == SlideshowBackgroundType.Image;
+            if (backgroundInput) Add(psi, "-i", o.BackgroundImage!);
+            Add(psi, "-filter_complex", BuildFilter(o, backgroundInput, false), "-map", "[video]", "-frames:v", "1", "-y", target);
+            var run = await RunToolAsync(psi, token);
+            if (run.ExitCode != 0 || !File.Exists(target))
+                throw new InvalidOperationException($"Could not render slide {i + 1}: {LastUsefulError(run.Error)}");
+            result.Add(target);
+            progress?.Report(new SlideshowProgress(20 + (i + 1d) / preparedImages.Count * 15,
+                $"Rendered {i + 1}/{preparedImages.Count} slides"));
+        }
+        return result;
+    }
+
     private static string BuildImageEffectFilter(SlideshowOptions o, int width, int height, string paddingColor)
     {
         var border = o.EnableBorder ? o.BorderWidth : 0;
@@ -299,7 +373,7 @@ public sealed class SlideshowService
         }
         await process.WaitForExitAsync(token);
         await stderrTask;
-        if (process.ExitCode != 0) return SlideshowResult.Failed(LastUsefulError(errors.ToString()));
+        if (process.ExitCode != 0) return SlideshowResult.Failed(ExplainFfmpegError(errors.ToString()));
         progress?.Report(new SlideshowProgress(100, "Slideshow created successfully."));
         return new SlideshowResult(true, null, output);
     }
@@ -322,6 +396,19 @@ public sealed class SlideshowService
     private static void Add(ProcessStartInfo psi, params string[] args) { foreach (var arg in args) psi.ArgumentList.Add(arg); }
     private static string LastUsefulError(string error) => string.Join(Environment.NewLine,
         error.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).TakeLast(8));
+    private static string ExplainFfmpegError(string error)
+    {
+        var detail = LastUsefulError(error);
+        if (error.Contains("No such filter", StringComparison.OrdinalIgnoreCase))
+            return "FFmpeg reported an unavailable filter. Verify that this build includes xfade.\n" + detail;
+        if (error.Contains("timebase", StringComparison.OrdinalIgnoreCase) || error.Contains("time base", StringComparison.OrdinalIgnoreCase))
+            return "FFmpeg rejected incompatible video timebases.\n" + detail;
+        if (error.Contains("size", StringComparison.OrdinalIgnoreCase) && error.Contains("match", StringComparison.OrdinalIgnoreCase))
+            return "FFmpeg rejected incompatible slide dimensions.\n" + detail;
+        if (error.Contains("xfade", StringComparison.OrdinalIgnoreCase))
+            return "FFmpeg could not apply the selected transition. Check its duration and the slide timeline.\n" + detail;
+        return detail;
+    }
     private static void TryDeleteTemporaryFolder(string path)
     {
         try

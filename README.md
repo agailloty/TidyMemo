@@ -70,6 +70,10 @@ suffix, and a completed result can be opened from the application.
 - Adjust H.264 CRF quality and encoding speed, monitor progress, cancel an
   export, and open the completed file.
 - Optionally use ImageMagick for enhanced background preparation.
+- Add native FFmpeg transitions between completed slide canvases. Choose one transition for the
+  whole slideshow, use Random without immediate repetitions, or keep None for the historical
+  cut behavior. Transition time is an overlap and therefore shortens the final duration; see
+  [`docs/slideshow-transitions.md`](docs/slideshow-transitions.md).
 
 ### Local settings and privacy
 

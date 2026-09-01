@@ -80,6 +80,29 @@
                             <StackPanel Grid.Column="2"><TextBlock Text="Encoder preset" FontSize="11"/><ComboBox ItemsSource="{Binding EncoderPresets}" SelectedItem="{Binding EncoderPreset}"/></StackPanel>
                         </Grid>
 
+                        <TextBlock Text="Transitions" FontWeight="SemiBold" />
+                        <Border Classes="warningCard">
+                            <StackPanel Spacing="7">
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Mode" FontSize="11" />
+                                        <ComboBox ItemsSource="{Binding TransitionModes}" SelectedItem="{Binding SelectedTransitionMode}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" IsVisible="{Binding IsTransitionEnabled}">
+                                        <TextBlock Text="Duration (seconds)" FontSize="11" />
+                                        <NumericUpDown Minimum="0.1" Maximum="3" Increment="0.1" Value="{Binding TransitionDuration}" />
+                                    </StackPanel>
+                                </Grid>
+                                <StackPanel IsVisible="{Binding IsTransitionEnabled}">
+                                    <TextBlock Text="Type" FontSize="11" />
+                                    <ComboBox ItemsSource="{Binding Transitions}" SelectedItem="{Binding SelectedTransition}"
+                                              ToolTip.Tip="{Binding SelectedTransition.Description}" />
+                                    <TextBlock Text="Random avoids using the same transition twice in a row."
+                                               Opacity="0.65" FontSize="10" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
                         <TextBlock Text="Presentation mode" FontWeight="SemiBold" />
                         <ComboBox ItemsSource="{Binding SlideshowTypes}" SelectedItem="{Binding SelectedType}" />
                         <Border IsVisible="{Binding IsBackgroundMode}" Classes="warningCard">
