@@ -68,7 +68,7 @@ public partial class SlideshowViewModel : ViewModelBase
     [ObservableProperty] private string? _audioFile;
     [ObservableProperty] private string? _backgroundImage;
     [ObservableProperty] private string _outputFile = string.Empty;
-    [ObservableProperty] private bool _includeSubfolders;
+    [ObservableProperty] private bool _includeSubfolders = true;
     [ObservableProperty] private bool _useEnhancedBackgroundProcessing = true;
     [ObservableProperty] private bool _preferImageMagick;
     [ObservableProperty] private string _imageMagickPath = "magick";
@@ -174,9 +174,18 @@ public partial class SlideshowViewModel : ViewModelBase
         var folder = await _dialogs.ShowFolderBrowserDialogAsync();
         if (!string.IsNullOrWhiteSpace(folder))
         {
+            var includeSubfolders = IncludeSubfolders;
+            var images = _service.GetImages(folder, includeSubfolders);
+            if (!includeSubfolders && images.Count == 0)
+            {
+                includeSubfolders = true;
+                IncludeSubfolders = true;
+                images = _service.GetImages(folder, includeSubfolders);
+            }
+
             if (_sources.All(source => !source.Path.Equals(folder, StringComparison.OrdinalIgnoreCase)))
-                _sources.Add(new SlideshowSource { Path = Path.GetFullPath(folder), IncludeSubfolders = IncludeSubfolders });
-            AddPaths(_service.GetImages(folder, IncludeSubfolders));
+                _sources.Add(new SlideshowSource { Path = Path.GetFullPath(folder), IncludeSubfolders = includeSubfolders });
+            AddPaths(images);
         }
     }
     private void AddPaths(IEnumerable<string> paths)
@@ -230,7 +239,12 @@ public partial class SlideshowViewModel : ViewModelBase
         StatusMessage = result.Success ? $"Slideshow created: {result.OutputFile}" : result.ErrorMessage ?? "Slideshow creation failed.";
         IsRunning = false; _cancellation.Dispose(); _cancellation = null; OpenOutputCommand.NotifyCanExecuteChanged();
     }
-    private void Clear() { Images.Clear(); _sources.Clear(); AudioFile = null; BackgroundImage = null; OutputFile = string.Empty; ProgressValue = 0; StatusMessage = "Add images to begin."; }
+    private void Clear()
+    {
+        ApplyProject(new SlideshowProject(), null);
+        IsProjectOpen = false;
+        StatusMessage = "Add images to begin.";
+    }
 
     private async Task NewProjectAsync()
     {

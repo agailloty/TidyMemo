@@ -38,7 +38,7 @@ public sealed class SlideshowPresentationSettings
     public int Height { get; set; } = 1080;
     public double ImageDuration { get; set; } = 3;
     public SlideshowSortMode SortMode { get; set; } = SlideshowSortMode.NaturalFileName;
-    public bool IncludeSubfolders { get; set; }
+    public bool IncludeSubfolders { get; set; } = true;
     public SlideshowType Type { get; set; }
     public SlideshowBackgroundType BackgroundType { get; set; }
     public string BackgroundColor { get; set; } = "#000000";

@@ -10,6 +10,14 @@ namespace TidyMemo.Tests;
 public sealed class SlideshowProjectStoreTests
 {
     [Fact]
+    public void NewProjectsIncludeImageSubfoldersByDefault()
+    {
+        var project = new SlideshowProject();
+
+        Assert.True(project.Presentation.IncludeSubfolders);
+    }
+
+    [Fact]
     public async Task ProjectRoundTripsWithStableIdentityAndSettings()
     {
         var directory = Directory.CreateTempSubdirectory("slidetune-tests-");
