@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using System.Threading;
 using TidyMemo.Models;
 using TidyMemo.Services;
 using TidyMemo.ViewModels;
@@ -41,8 +42,10 @@ public sealed class SlideshowViewModelTests
 
     private sealed class InMemoryProjectStore : ISlideshowProjectStore
     {
-        public Task<SlideshowProject> LoadAsync(string path) => Task.FromResult(new SlideshowProject());
-        public Task SaveAsync(string path, SlideshowProject project) => Task.CompletedTask;
+        public Task<SlideshowProject> LoadAsync(string path, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new SlideshowProject());
+        public Task SaveAsync(string path, SlideshowProject project, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class StubDialogService : IDialogService

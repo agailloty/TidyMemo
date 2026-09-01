@@ -29,6 +29,7 @@ public sealed class JsonSlideshowProjectStore : ISlideshowProjectStore
             throw new InvalidDataException("The slideshow project is empty or invalid.");
         if (project.SchemaVersion is < 1 or > SlideshowProject.CurrentSchemaVersion)
             throw new InvalidDataException($"Unsupported slideshow project version: {project.SchemaVersion}.");
+        project.SchemaVersion = SlideshowProject.CurrentSchemaVersion;
         return project;
     }
 

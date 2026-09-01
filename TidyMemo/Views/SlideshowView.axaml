@@ -140,6 +140,35 @@
                             </StackPanel>
                         </Border>
 
+                        <TextBlock Text="Photo motion" FontWeight="SemiBold" />
+                        <Border Classes="warningCard">
+                            <StackPanel Spacing="7">
+                                <StackPanel>
+                                    <TextBlock Text="Mode" FontSize="11" />
+                                    <ComboBox ItemsSource="{Binding MotionModes}" SelectedItem="{Binding SelectedMotionMode}" />
+                                </StackPanel>
+                                <StackPanel IsVisible="{Binding IsFixedMotion}">
+                                    <TextBlock Text="Effect" FontSize="11" />
+                                    <ComboBox ItemsSource="{Binding Motions}" SelectedItem="{Binding SelectedMotion}"
+                                              ToolTip.Tip="{Binding SelectedMotion.Description}" />
+                                </StackPanel>
+                                <Grid IsVisible="{Binding IsMotionEnabled}" ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Intensity" FontSize="11" />
+                                        <ComboBox ItemsSource="{Binding MotionIntensities}" SelectedItem="{Binding SelectedMotionIntensity}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Easing" FontSize="11" />
+                                        <ComboBox ItemsSource="{Binding MotionEasings}" SelectedItem="{Binding SelectedMotionEasing}" />
+                                    </StackPanel>
+                                </Grid>
+                                <StackPanel IsVisible="{Binding IsMotionEnabled}">
+                                    <TextBlock Text="Random seed" FontSize="11" />
+                                    <NumericUpDown Minimum="0" Maximum="2147483647" Value="{Binding MotionRandomSeed}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
                         <TextBlock Text="Presentation mode" FontWeight="SemiBold" />
                         <ComboBox ItemsSource="{Binding SlideshowTypes}" SelectedItem="{Binding SelectedType}" />
                         <Border IsVisible="{Binding IsBackgroundMode}" Classes="warningCard">

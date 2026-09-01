@@ -5,7 +5,7 @@ namespace TidyMemo.Models;
 
 public sealed class SlideshowProject
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -30,6 +30,7 @@ public sealed class SlideshowSlide
     public bool Enabled { get; set; } = true;
     public double? Duration { get; set; }
     public string? TransitionId { get; set; }
+    public string? MotionId { get; set; }
 }
 
 public sealed class SlideshowPresentationSettings
@@ -60,6 +61,11 @@ public sealed class SlideshowPresentationSettings
     public TransitionMode TransitionMode { get; set; }
     public string TransitionId { get; set; } = "fade";
     public double TransitionDuration { get; set; } = 0.8;
+    public PhotoMotionMode MotionMode { get; set; }
+    public string MotionId { get; set; } = "none";
+    public MotionIntensity MotionIntensity { get; set; } = MotionIntensity.Normal;
+    public MotionEasing MotionEasing { get; set; } = MotionEasing.EaseInOut;
+    public int RandomSeed { get; set; } = 1;
 }
 
 public sealed class SlideshowAudioSettings

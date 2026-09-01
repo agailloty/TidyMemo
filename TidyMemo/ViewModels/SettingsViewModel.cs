@@ -51,6 +51,11 @@ public partial class SettingsViewModel : ViewModelBase
     public TransitionMode SlideshowTransitionMode => _appSettings.SlideshowTransitionMode;
     public string SlideshowTransitionId => _appSettings.SlideshowTransitionId;
     public double SlideshowTransitionDuration => _appSettings.SlideshowTransitionDuration;
+    public PhotoMotionMode SlideshowMotionMode => _appSettings.SlideshowMotionMode;
+    public string SlideshowMotionId => _appSettings.SlideshowMotionId;
+    public MotionIntensity SlideshowMotionIntensity => _appSettings.SlideshowMotionIntensity;
+    public MotionEasing SlideshowMotionEasing => _appSettings.SlideshowMotionEasing;
+    public int SlideshowMotionRandomSeed => _appSettings.SlideshowMotionRandomSeed;
 
     public SettingsViewModel(
         SettingsService settingsService,
@@ -121,6 +126,17 @@ public partial class SettingsViewModel : ViewModelBase
         _appSettings.SlideshowTransitionMode = mode;
         _appSettings.SlideshowTransitionId = transitionId;
         _appSettings.SlideshowTransitionDuration = duration;
+        PersistSettings();
+    }
+
+    public void SaveSlideshowMotion(PhotoMotionMode mode, string motionId, MotionIntensity intensity,
+        MotionEasing easing, int randomSeed)
+    {
+        _appSettings.SlideshowMotionMode = mode;
+        _appSettings.SlideshowMotionId = motionId;
+        _appSettings.SlideshowMotionIntensity = intensity;
+        _appSettings.SlideshowMotionEasing = easing;
+        _appSettings.SlideshowMotionRandomSeed = randomSeed;
         PersistSettings();
     }
 }

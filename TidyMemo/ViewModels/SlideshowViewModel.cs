@@ -43,6 +43,10 @@ public partial class SlideshowViewModel : ViewModelBase
     public IReadOnlyList<string> EncoderPresets { get; } = new[] { "ultrafast", "veryfast", "fast", "medium", "slow", "slower" };
     public IReadOnlyList<TransitionMode> TransitionModes { get; } = Enum.GetValues<TransitionMode>();
     public IReadOnlyList<TransitionDefinition> Transitions { get; } = TransitionCatalog.All;
+    public IReadOnlyList<PhotoMotionMode> MotionModes { get; } = Enum.GetValues<PhotoMotionMode>();
+    public IReadOnlyList<PhotoMotionDefinition> Motions { get; } = PhotoMotionCatalog.All;
+    public IReadOnlyList<MotionIntensity> MotionIntensities { get; } = Enum.GetValues<MotionIntensity>();
+    public IReadOnlyList<MotionEasing> MotionEasings { get; } = Enum.GetValues<MotionEasing>();
 
     [ObservableProperty] private SlideshowResolution _selectedResolution;
     [ObservableProperty] private SlideshowType _selectedType = SlideshowType.Basic;
@@ -75,6 +79,11 @@ public partial class SlideshowViewModel : ViewModelBase
     [ObservableProperty] private TransitionMode _selectedTransitionMode;
     [ObservableProperty] private TransitionDefinition _selectedTransition;
     [ObservableProperty] private double _transitionDuration;
+    [ObservableProperty] private PhotoMotionMode _selectedMotionMode;
+    [ObservableProperty] private PhotoMotionDefinition _selectedMotion;
+    [ObservableProperty] private MotionIntensity _selectedMotionIntensity;
+    [ObservableProperty] private MotionEasing _selectedMotionEasing;
+    [ObservableProperty] private int _motionRandomSeed = 1;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanCreate))] private bool _isRunning;
     [ObservableProperty] private double _progressValue;
     [ObservableProperty] private string _statusMessage = "Add images to begin.";
@@ -89,6 +98,8 @@ public partial class SlideshowViewModel : ViewModelBase
     public bool IsGradientBackground => IsBackgroundMode && SelectedBackgroundType == SlideshowBackgroundType.Gradient;
     public bool CanCreate => HasImages && !IsRunning && _settings.IsFfmpegConfigured && !string.IsNullOrWhiteSpace(OutputFile);
     public bool IsTransitionEnabled => SelectedTransitionMode != TransitionMode.None;
+    public bool IsMotionEnabled => SelectedMotionMode != PhotoMotionMode.None;
+    public bool IsFixedMotion => SelectedMotionMode == PhotoMotionMode.Preset;
     public string ImageCountText
     {
         get
@@ -112,6 +123,11 @@ public partial class SlideshowViewModel : ViewModelBase
         _selectedTransition = TransitionCatalog.Find(settings.SlideshowTransitionId) ?? TransitionCatalog.Fade;
         _transitionDuration = settings.SlideshowTransitionDuration is >= 0.1 and <= 3
             ? settings.SlideshowTransitionDuration : 0.8;
+        _selectedMotionMode = settings.SlideshowMotionMode;
+        _selectedMotion = PhotoMotionCatalog.Find(settings.SlideshowMotionId) ?? PhotoMotionCatalog.None;
+        _selectedMotionIntensity = settings.SlideshowMotionIntensity;
+        _selectedMotionEasing = settings.SlideshowMotionEasing;
+        _motionRandomSeed = settings.SlideshowMotionRandomSeed;
         AddImagesCommand = new AsyncRelayCommand(AddImagesAsync);
         AddFolderCommand = new AsyncRelayCommand(AddFolderAsync);
         RemoveImageCommand = new RelayCommand<SlideshowItemViewModel>(RemoveImage);
@@ -139,7 +155,7 @@ public partial class SlideshowViewModel : ViewModelBase
                 or nameof(ProjectName) or nameof(IsProjectOpen) or nameof(IsRunning) or nameof(ProgressValue) or nameof(StatusMessage)
                 or nameof(CanCreate) or nameof(HasImages) or nameof(ImageCountText) or nameof(IsFfmpegConfigured)
                 or nameof(IsBackgroundMode) or nameof(IsImageBackground) or nameof(IsGradientBackground)
-                or nameof(IsTransitionEnabled))) MarkDirty();
+                or nameof(IsTransitionEnabled) or nameof(IsMotionEnabled) or nameof(IsFixedMotion))) MarkDirty();
         };
     }
 
@@ -234,9 +250,12 @@ public partial class SlideshowViewModel : ViewModelBase
             ShadowBlur = ShadowBlur, ShadowOpacity = ShadowOpacity,
             PreferImageMagick = PreferImageMagick, ImageMagickPath = ImageMagickPath,
             TransitionMode = SelectedTransitionMode, TransitionId = SelectedTransition.Id,
-            TransitionDuration = TransitionDuration
+            TransitionDuration = TransitionDuration, MotionMode = SelectedMotionMode,
+            MotionId = SelectedMotion.Id, MotionIntensity = SelectedMotionIntensity,
+            MotionEasing = SelectedMotionEasing, RandomSeed = MotionRandomSeed
         }, progress, _cancellation.Token);
-        StatusMessage = result.Success ? $"Slideshow created: {result.OutputFile}" : result.ErrorMessage ?? "Slideshow creation failed.";
+        StatusMessage = result.Success ? $"Slideshow created: {result.OutputFile}" :
+            $"Export failed: {result.ErrorMessage ?? "Slideshow creation failed."}";
         IsRunning = false; _cancellation.Dispose(); _cancellation = null; OpenOutputCommand.NotifyCanExecuteChanged();
     }
     private void Clear()
@@ -358,7 +377,9 @@ public partial class SlideshowViewModel : ViewModelBase
             UseEnhancedBackgroundProcessing = UseEnhancedBackgroundProcessing,
             PreferImageMagick = PreferImageMagick, ImageMagickPath = ImageMagickPath,
             TransitionMode = SelectedTransitionMode, TransitionId = SelectedTransition.Id,
-            TransitionDuration = TransitionDuration
+            TransitionDuration = TransitionDuration, MotionMode = SelectedMotionMode,
+            MotionId = SelectedMotion.Id, MotionIntensity = SelectedMotionIntensity,
+            MotionEasing = SelectedMotionEasing, RandomSeed = MotionRandomSeed
         },
         Audio = new SlideshowAudioSettings
         {
@@ -408,6 +429,11 @@ public partial class SlideshowViewModel : ViewModelBase
             SelectedTransitionMode = presentation.TransitionMode;
             SelectedTransition = TransitionCatalog.Find(presentation.TransitionId) ?? TransitionCatalog.Fade;
             TransitionDuration = presentation.TransitionDuration;
+            SelectedMotionMode = presentation.MotionMode;
+            SelectedMotion = PhotoMotionCatalog.Find(presentation.MotionId) ?? PhotoMotionCatalog.None;
+            SelectedMotionIntensity = presentation.MotionIntensity;
+            SelectedMotionEasing = presentation.MotionEasing;
+            MotionRandomSeed = presentation.RandomSeed;
             AudioFile = path is null ? project.Audio.Path : SlideshowProjectPaths.ToAbsolutePath(project.Audio.Path, path);
             Volume = project.Audio.Volume; FrameRate = project.Export.FrameRate; Quality = project.Export.Quality;
             EncoderPreset = project.Export.EncoderPreset;
@@ -458,6 +484,22 @@ public partial class SlideshowViewModel : ViewModelBase
     {
         if (SelectedTransition is not null)
             _settings.SaveSlideshowTransition(SelectedTransitionMode, SelectedTransition.Id, TransitionDuration);
+    }
+    partial void OnSelectedMotionModeChanged(PhotoMotionMode value)
+    {
+        OnPropertyChanged(nameof(IsMotionEnabled));
+        OnPropertyChanged(nameof(IsFixedMotion));
+        PersistMotionSettings();
+    }
+    partial void OnSelectedMotionChanged(PhotoMotionDefinition value) => PersistMotionSettings();
+    partial void OnSelectedMotionIntensityChanged(MotionIntensity value) => PersistMotionSettings();
+    partial void OnSelectedMotionEasingChanged(MotionEasing value) => PersistMotionSettings();
+    partial void OnMotionRandomSeedChanged(int value) => PersistMotionSettings();
+    private void PersistMotionSettings()
+    {
+        if (SelectedMotion is not null)
+            _settings.SaveSlideshowMotion(SelectedMotionMode, SelectedMotion.Id, SelectedMotionIntensity,
+                SelectedMotionEasing, MotionRandomSeed);
     }
     partial void OnOutputFileChanged(string value) { OnPropertyChanged(nameof(CanCreate)); CreateCommand.NotifyCanExecuteChanged(); OpenOutputCommand.NotifyCanExecuteChanged(); }
     partial void OnIsRunningChanged(bool value) { OnPropertyChanged(nameof(CanCreate)); CreateCommand.NotifyCanExecuteChanged(); CancelCommand.NotifyCanExecuteChanged(); ClearCommand.NotifyCanExecuteChanged(); NewProjectCommand.NotifyCanExecuteChanged(); OpenProjectCommand.NotifyCanExecuteChanged(); SaveProjectCommand.NotifyCanExecuteChanged(); SaveProjectAsCommand.NotifyCanExecuteChanged(); }

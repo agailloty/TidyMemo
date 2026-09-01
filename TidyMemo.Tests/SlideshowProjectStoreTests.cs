@@ -35,7 +35,10 @@ public sealed class SlideshowProjectStoreTests
                 Presentation = new SlideshowPresentationSettings
                 {
                     Width = 3840, Height = 2160, TransitionMode = TransitionMode.Random,
-                    TransitionId = "dissolve", TransitionDuration = 1.2
+                    TransitionId = "dissolve", TransitionDuration = 1.2,
+                    MotionMode = PhotoMotionMode.RandomSoft, MotionId = "slow-zoom-in",
+                    MotionIntensity = MotionIntensity.Subtle, MotionEasing = MotionEasing.EaseOut,
+                    RandomSeed = 1234
                 },
                 Audio = new SlideshowAudioSettings { Path = "audio/music.mp3", Volume = 0.4 },
                 Export = new SlideshowExportSettings { OutputFile = "exports/movie.mp4", Quality = 20 }
@@ -50,6 +53,10 @@ public sealed class SlideshowProjectStoreTests
             Assert.Equal("Holiday", loaded.Name);
             Assert.True(loaded.Sources[0].IncludeSubfolders);
             Assert.Equal(TransitionMode.Random, loaded.Presentation.TransitionMode);
+            Assert.Equal(PhotoMotionMode.RandomSoft, loaded.Presentation.MotionMode);
+            Assert.Equal(MotionIntensity.Subtle, loaded.Presentation.MotionIntensity);
+            Assert.Equal(MotionEasing.EaseOut, loaded.Presentation.MotionEasing);
+            Assert.Equal(1234, loaded.Presentation.RandomSeed);
             Assert.Equal("audio/music.mp3", loaded.Audio.Path);
             Assert.Equal(20, loaded.Export.Quality);
         }

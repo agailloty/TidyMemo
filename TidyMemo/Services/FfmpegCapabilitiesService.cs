@@ -7,7 +7,8 @@ using System.Threading.Tasks;
 
 namespace TidyMemo.Services;
 
-public sealed record FfmpegCapabilities(bool HasXfade, IReadOnlySet<string> XfadeTransitions, string Diagnostic);
+public sealed record FfmpegCapabilities(bool HasXfade, bool HasZoompan,
+    IReadOnlySet<string> XfadeTransitions, string Diagnostic);
 
 public sealed partial class FfmpegCapabilitiesService
 {
@@ -27,7 +28,7 @@ public sealed partial class FfmpegCapabilitiesService
         try
         {
             using var process = Process.Start(psi);
-            if (process is null) return new(false, new HashSet<string>(), "FFmpeg could not be started.");
+            if (process is null) return new(false, false, new HashSet<string>(), "FFmpeg could not be started.");
             var stdout = await process.StandardOutput.ReadToEndAsync(token);
             var stderr = await process.StandardError.ReadToEndAsync(token);
             await process.WaitForExitAsync(token);
@@ -38,12 +39,30 @@ public sealed partial class FfmpegCapabilitiesService
                 var parts = match.Value.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length > 0 && parts[0] != "custom") names.Add(parts[0]);
             }
-            return new(process.ExitCode == 0 && text.Contains("Filter xfade", StringComparison.OrdinalIgnoreCase), names,
+            var hasXfade = process.ExitCode == 0 && text.Contains("Filter xfade", StringComparison.OrdinalIgnoreCase);
+            var zoompan = await HasFilterAsync(ffmpegPath, "zoompan", token);
+            return new(hasXfade, zoompan, names,
                 process.ExitCode == 0 ? text : $"FFmpeg exited with code {process.ExitCode}: {text}");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return new(false, new HashSet<string>(), exception.Message);
+            return new(false, false, new HashSet<string>(), exception.Message);
         }
+    }
+
+    private static async Task<bool> HasFilterAsync(string ffmpegPath, string filter, CancellationToken token)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = ffmpegPath, UseShellExecute = false, CreateNoWindow = true,
+            RedirectStandardOutput = true, RedirectStandardError = true
+        };
+        psi.ArgumentList.Add("-hide_banner"); psi.ArgumentList.Add("-h"); psi.ArgumentList.Add($"filter={filter}");
+        using var process = Process.Start(psi);
+        if (process is null) return false;
+        var stdout = await process.StandardOutput.ReadToEndAsync(token);
+        var stderr = await process.StandardError.ReadToEndAsync(token);
+        await process.WaitForExitAsync(token);
+        return process.ExitCode == 0 && (stdout + stderr).Contains($"Filter {filter}", StringComparison.OrdinalIgnoreCase);
     }
 }

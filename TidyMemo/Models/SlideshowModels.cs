@@ -47,6 +47,11 @@ public sealed class SlideshowOptions
     public TransitionMode TransitionMode { get; init; } = TransitionMode.None;
     public string TransitionId { get; init; } = "fade";
     public double TransitionDuration { get; init; } = 0.8;
+    public PhotoMotionMode MotionMode { get; init; } = PhotoMotionMode.None;
+    public string MotionId { get; init; } = "none";
+    public MotionIntensity MotionIntensity { get; init; } = MotionIntensity.Normal;
+    public MotionEasing MotionEasing { get; init; } = MotionEasing.EaseInOut;
+    public int RandomSeed { get; init; } = 1;
 }
 
 public sealed record SlideshowProgress(double Percentage, string Message);
