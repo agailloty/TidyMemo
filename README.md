@@ -1,5 +1,26 @@
 # TidyMemo
 
+## Headless slideshow export
+
+A saved `.slidetune` project can be rendered without starting the graphical interface. The project
+contains the media paths, output path, presentation effects, motion, transitions, audio and export
+settings. FFmpeg is read from the existing TidyMemo application settings.
+
+```powershell
+TidyMemo.exe "C:\projects\holiday.slidetune"
+```
+
+The explicit form and automation overrides are also supported:
+
+```powershell
+TidyMemo.exe --render "C:\projects\holiday.slidetune" --output "C:\bench\run-01.mp4"
+TidyMemo.exe --render "C:\projects\holiday.slidetune" --ffmpeg "C:\ffmpeg\bin\ffmpeg.exe"
+```
+
+Progress and elapsed time are written to standard output. Exit code `0` means success, `1` means
+the export failed, `2` means the command line or configuration is invalid, and `130` means it was
+cancelled with Ctrl+C. Starting TidyMemo without arguments still opens the graphical interface.
+
 **Organize, understand, transform, and revisit your photo and video memories — locally.**
 
 TidyMemo is a free, open-source desktop application for maintaining personal
