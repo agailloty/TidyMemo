@@ -6,18 +6,55 @@
              x:Class="TidyMemo.Views.SlideshowView"
              x:DataType="vm:SlideshowViewModel">
     <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="12" RowSpacing="12">
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
             <StackPanel>
                 <TextBlock Text="SlideTune" FontSize="28" FontWeight="Bold" />
                 <TextBlock Text="Turn an ordered collection of images into an MP4 slideshow with optional music."
                            Opacity="0.65" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ProjectTitle}" FontWeight="SemiBold" Opacity="0.8"
+                           IsVisible="{Binding IsProjectOpen}" />
             </StackPanel>
-            <Border Grid.Column="1" Classes="videoBadge" VerticalAlignment="Center">
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="12 0"
+                        IsVisible="{Binding IsProjectOpen}">
+                <Button Content="NEW" Command="{Binding NewProjectCommand}" />
+                <Button Content="OPEN..." Command="{Binding OpenProjectCommand}" />
+                <Button Content="SAVE" Classes="accent" Command="{Binding SaveProjectCommand}" />
+                <Button Content="SAVE AS..." Command="{Binding SaveProjectAsCommand}" />
+            </StackPanel>
+            <Border Grid.Column="2" Classes="videoBadge" VerticalAlignment="Center">
                 <TextBlock Text="FFMPEG" FontWeight="Bold" FontSize="11" />
             </Border>
         </Grid>
 
-        <Grid Grid.Row="1" ColumnDefinitions="2*,3*" ColumnSpacing="14">
+        <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="18" HorizontalAlignment="Center"
+              VerticalAlignment="Center" MaxWidth="920" IsVisible="{Binding !IsProjectOpen}">
+            <Border Grid.Column="0" Classes="videoCard" Padding="28" MinWidth="360" MinHeight="230">
+                <StackPanel Spacing="14" VerticalAlignment="Center">
+                    <TextBlock Text="01" Classes="sectionEyebrow" />
+                    <TextBlock Text="Nouveau projet" FontSize="24" FontWeight="Bold" />
+                    <TextBlock Text="Commencez un nouveau diaporama, ajoutez vos photos puis configurez sa présentation."
+                               TextWrapping="Wrap" Opacity="0.7" />
+                    <TextBlock Text="Vous choisirez d’abord où enregistrer le fichier .slidetune."
+                               TextWrapping="Wrap" Opacity="0.55" FontSize="11" />
+                    <Button Content="CRÉER UN PROJET" Classes="accent" Command="{Binding NewProjectCommand}"
+                            HorizontalAlignment="Left" Margin="0 12 0 0" />
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Classes="videoCard" Padding="28" MinWidth="360" MinHeight="230">
+                <StackPanel Spacing="14" VerticalAlignment="Center">
+                    <TextBlock Text="02" Classes="sectionEyebrow" />
+                    <TextBlock Text="Ouvrir un projet" FontSize="24" FontWeight="Bold" />
+                    <TextBlock Text="Reprenez un projet SlideTune existant avec ses photos, son ordre et tous ses paramètres."
+                               TextWrapping="Wrap" Opacity="0.7" />
+                    <Button Content="OUVRIR UN PROJET..." Command="{Binding OpenProjectCommand}"
+                            HorizontalAlignment="Left" Margin="0 12 0 0" />
+                </StackPanel>
+            </Border>
+            <TextBlock Grid.ColumnSpan="2" Text="{Binding StatusMessage}" VerticalAlignment="Bottom"
+                       HorizontalAlignment="Center" Margin="0 0 0 -34" Opacity="0.7" />
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnDefinitions="2*,3*" ColumnSpacing="14" IsVisible="{Binding IsProjectOpen}">
             <Border Grid.Column="0" Classes="videoCard">
                 <Grid RowDefinitions="Auto,Auto,*,Auto">
                     <StackPanel Grid.Row="0">
@@ -162,7 +199,7 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="2" Classes="videoCard" Padding="14 12">
+        <Border Grid.Row="2" Classes="videoCard" Padding="14 12" IsVisible="{Binding IsProjectOpen}">
             <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
                 <Grid Grid.Column="0" ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <TextBox Text="{Binding OutputFile}" IsReadOnly="True" PlaceholderText="Choose the output MP4 file" />
@@ -174,7 +211,7 @@
                 <Button Grid.Column="4" Content="OPEN" Command="{Binding OpenOutputCommand}" />
             </Grid>
         </Border>
-        <StackPanel Grid.Row="3" Spacing="4">
+        <StackPanel Grid.Row="3" Spacing="4" IsVisible="{Binding IsProjectOpen}">
             <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue}" IsVisible="{Binding IsRunning}" />
             <TextBlock Text="{Binding StatusMessage}" TextTrimming="CharacterEllipsis" Opacity="0.75" />
             <Button Content="Configure FFmpeg" HorizontalAlignment="Left" IsVisible="{Binding !IsFfmpegConfigured}" Command="{Binding OpenSettingsCommand}" />

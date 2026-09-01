@@ -21,7 +21,11 @@ public partial class SlideshowViewModel : ViewModelBase
     private readonly ExifService _exifService;
     private readonly IDialogService _dialogs;
     private readonly SettingsViewModel _settings;
+    private readonly ISlideshowProjectStore _projectStore;
+    private readonly List<SlideshowSource> _sources = [];
     private CancellationTokenSource? _cancellation;
+    private bool _isApplyingProject;
+    private Guid _projectId = Guid.NewGuid();
 
     public ObservableCollection<SlideshowItemViewModel> Images { get; } = new();
     public IReadOnlyList<SlideshowResolution> Resolutions { get; } = new[]
@@ -74,6 +78,10 @@ public partial class SlideshowViewModel : ViewModelBase
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanCreate))] private bool _isRunning;
     [ObservableProperty] private double _progressValue;
     [ObservableProperty] private string _statusMessage = "Add images to begin.";
+    [ObservableProperty] private string? _projectPath;
+    [ObservableProperty] private string _projectName = "Untitled slideshow";
+    [ObservableProperty] private bool _isDirty;
+    [ObservableProperty] private bool _isProjectOpen;
 
     public bool HasImages => Images.Count > 0;
     public bool IsBackgroundMode => SelectedType == SlideshowType.Background;
@@ -92,11 +100,13 @@ public partial class SlideshowViewModel : ViewModelBase
         }
     }
     public bool IsFfmpegConfigured => _settings.IsFfmpegConfigured;
+    public string ProjectTitle => $"{ProjectName}{(IsDirty ? " *" : string.Empty)}";
 
     public SlideshowViewModel(SlideshowService service, ExifService exifService, IDialogService dialogs,
-        SettingsViewModel settings, Action openSettings)
+        SettingsViewModel settings, Action openSettings, ISlideshowProjectStore? projectStore = null)
     {
         _service = service; _exifService = exifService; _dialogs = dialogs; _settings = settings;
+        _projectStore = projectStore ?? new JsonSlideshowProjectStore();
         _selectedResolution = Resolutions[0];
         _selectedTransitionMode = settings.SlideshowTransitionMode;
         _selectedTransition = TransitionCatalog.Find(settings.SlideshowTransitionId) ?? TransitionCatalog.Fade;
@@ -117,8 +127,20 @@ public partial class SlideshowViewModel : ViewModelBase
         ClearCommand = new RelayCommand(Clear, () => !IsRunning && HasImages);
         OpenOutputCommand = new RelayCommand(OpenOutput, () => File.Exists(OutputFile));
         OpenSettingsCommand = new RelayCommand(openSettings);
-        Images.CollectionChanged += (_, _) => RefreshCollectionState();
+        NewProjectCommand = new AsyncRelayCommand(NewProjectAsync, () => !IsRunning);
+        OpenProjectCommand = new AsyncRelayCommand(OpenProjectAsync, () => !IsRunning);
+        SaveProjectCommand = new AsyncRelayCommand(SaveProjectAsync, () => !IsRunning);
+        SaveProjectAsCommand = new AsyncRelayCommand(SaveProjectAsAsync, () => !IsRunning);
+        Images.CollectionChanged += (_, _) => { RefreshCollectionState(); MarkDirty(); };
         _settings.PropertyChanged += SettingsChanged;
+        PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName is not (nameof(IsDirty) or nameof(ProjectTitle) or nameof(ProjectPath)
+                or nameof(ProjectName) or nameof(IsProjectOpen) or nameof(IsRunning) or nameof(ProgressValue) or nameof(StatusMessage)
+                or nameof(CanCreate) or nameof(HasImages) or nameof(ImageCountText) or nameof(IsFfmpegConfigured)
+                or nameof(IsBackgroundMode) or nameof(IsImageBackground) or nameof(IsGradientBackground)
+                or nameof(IsTransitionEnabled))) MarkDirty();
+        };
     }
 
     public IAsyncRelayCommand AddImagesCommand { get; }
@@ -136,6 +158,10 @@ public partial class SlideshowViewModel : ViewModelBase
     public IRelayCommand ClearCommand { get; }
     public IRelayCommand OpenOutputCommand { get; }
     public IRelayCommand OpenSettingsCommand { get; }
+    public IAsyncRelayCommand NewProjectCommand { get; }
+    public IAsyncRelayCommand OpenProjectCommand { get; }
+    public IAsyncRelayCommand SaveProjectCommand { get; }
+    public IAsyncRelayCommand SaveProjectAsCommand { get; }
 
     private async Task AddImagesAsync()
     {
@@ -146,7 +172,12 @@ public partial class SlideshowViewModel : ViewModelBase
     private async Task AddFolderAsync()
     {
         var folder = await _dialogs.ShowFolderBrowserDialogAsync();
-        if (!string.IsNullOrWhiteSpace(folder)) AddPaths(_service.GetImages(folder, IncludeSubfolders));
+        if (!string.IsNullOrWhiteSpace(folder))
+        {
+            if (_sources.All(source => !source.Path.Equals(folder, StringComparison.OrdinalIgnoreCase)))
+                _sources.Add(new SlideshowSource { Path = Path.GetFullPath(folder), IncludeSubfolders = IncludeSubfolders });
+            AddPaths(_service.GetImages(folder, IncludeSubfolders));
+        }
     }
     private void AddPaths(IEnumerable<string> paths)
     {
@@ -199,7 +230,196 @@ public partial class SlideshowViewModel : ViewModelBase
         StatusMessage = result.Success ? $"Slideshow created: {result.OutputFile}" : result.ErrorMessage ?? "Slideshow creation failed.";
         IsRunning = false; _cancellation.Dispose(); _cancellation = null; OpenOutputCommand.NotifyCanExecuteChanged();
     }
-    private void Clear() { Images.Clear(); AudioFile = null; BackgroundImage = null; OutputFile = string.Empty; ProgressValue = 0; StatusMessage = "Add images to begin."; }
+    private void Clear() { Images.Clear(); _sources.Clear(); AudioFile = null; BackgroundImage = null; OutputFile = string.Empty; ProgressValue = 0; StatusMessage = "Add images to begin."; }
+
+    private async Task NewProjectAsync()
+    {
+        if (IsDirty)
+        {
+            StatusMessage = "Save the current project before creating a new one.";
+            return;
+        }
+
+        var path = await _dialogs.ShowSaveFilePickerAsync(
+            "Create SlideTune project", "slideshow.slidetune", ".slidetune");
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        var project = new SlideshowProject { Name = Path.GetFileNameWithoutExtension(path) };
+        try
+        {
+            await _projectStore.SaveAsync(path, project);
+            ApplyProject(project, path);
+            IsProjectOpen = true;
+            StatusMessage = $"Project created: {ProjectName}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not create project: {ex.Message}";
+        }
+    }
+
+    private async Task OpenProjectAsync()
+    {
+        if (IsDirty)
+        {
+            StatusMessage = "Save the current project before opening another one.";
+            return;
+        }
+        var path = await _dialogs.ShowFilePickerAsync("Open SlideTune project", ["*.slidetune"]);
+        if (string.IsNullOrWhiteSpace(path)) return;
+        try
+        {
+            var project = await _projectStore.LoadAsync(path);
+            ApplyProject(project, path);
+            IsProjectOpen = true;
+            var missing = Images.Count(item => !File.Exists(item.Path));
+            StatusMessage = missing == 0
+                ? $"Project opened: {ProjectName}"
+                : $"Project opened with {missing} missing image(s).";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not open project: {ex.Message}";
+        }
+    }
+
+    private async Task SaveProjectAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ProjectPath))
+        {
+            await SaveProjectAsAsync();
+            return;
+        }
+        await SaveToAsync(ProjectPath);
+    }
+
+    private async Task SaveProjectAsAsync()
+    {
+        var suggestedName = SanitizeFileName(ProjectName) + ".slidetune";
+        var path = await _dialogs.ShowSaveFilePickerAsync("Save SlideTune project", suggestedName, ".slidetune");
+        if (!string.IsNullOrWhiteSpace(path)) await SaveToAsync(path);
+    }
+
+    private async Task SaveToAsync(string path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(ProjectPath) && ProjectName == "Untitled slideshow")
+                ProjectName = Path.GetFileNameWithoutExtension(path);
+            await _projectStore.SaveAsync(path, BuildProject(path));
+            ProjectPath = Path.GetFullPath(path);
+            ProjectName = Path.GetFileNameWithoutExtension(path);
+            IsDirty = false;
+            StatusMessage = $"Project saved: {ProjectName}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not save project: {ex.Message}";
+        }
+    }
+
+    private SlideshowProject BuildProject(string path) => new()
+    {
+        Id = _projectId,
+        Name = string.IsNullOrWhiteSpace(ProjectName) ? Path.GetFileNameWithoutExtension(path) : ProjectName,
+        Sources = _sources.Select(source => new SlideshowSource
+        {
+            Path = SlideshowProjectPaths.ToStoredPath(source.Path, path),
+            IncludeSubfolders = source.IncludeSubfolders
+        }).ToList(),
+        Slides = Images.Select(item => new SlideshowSlide
+        {
+            Id = item.Id, Path = SlideshowProjectPaths.ToStoredPath(item.Path, path)
+        }).ToList(),
+        Presentation = new SlideshowPresentationSettings
+        {
+            Width = SelectedResolution.Width, Height = SelectedResolution.Height, ImageDuration = ImageDuration,
+            SortMode = SelectedSortMode, IncludeSubfolders = IncludeSubfolders,
+            Type = SelectedType, BackgroundType = SelectedBackgroundType, BackgroundColor = BackgroundColor,
+            GradientEndColor = GradientEndColor, GradientDirection = SelectedGradientDirection,
+            BackgroundImage = SlideshowProjectPaths.ToStoredPath(BackgroundImage, path), ImageScaling = ImageScaling,
+            EnableBorder = EnableBorder, BorderWidth = BorderWidth, BorderColor = BorderColor,
+            EnableShadow = EnableShadow, ShadowOffsetX = ShadowOffsetX, ShadowOffsetY = ShadowOffsetY,
+            ShadowBlur = ShadowBlur, ShadowOpacity = ShadowOpacity,
+            UseEnhancedBackgroundProcessing = UseEnhancedBackgroundProcessing,
+            PreferImageMagick = PreferImageMagick, ImageMagickPath = ImageMagickPath,
+            TransitionMode = SelectedTransitionMode, TransitionId = SelectedTransition.Id,
+            TransitionDuration = TransitionDuration
+        },
+        Audio = new SlideshowAudioSettings
+        {
+            Path = SlideshowProjectPaths.ToStoredPath(AudioFile, path), Volume = Volume
+        },
+        Export = new SlideshowExportSettings
+        {
+            OutputFile = SlideshowProjectPaths.ToStoredPath(OutputFile, path), FrameRate = FrameRate,
+            Quality = Quality, EncoderPreset = EncoderPreset
+        }
+    };
+
+    private void ApplyProject(SlideshowProject project, string? path)
+    {
+        _isApplyingProject = true;
+        try
+        {
+            _projectId = project.Id;
+            Images.Clear();
+            _sources.Clear();
+            SelectedSortMode = project.Presentation.SortMode;
+            IncludeSubfolders = project.Presentation.IncludeSubfolders;
+            foreach (var source in project.Sources)
+            {
+                var absolute = path is null ? source.Path : SlideshowProjectPaths.ToAbsolutePath(source.Path, path);
+                if (!string.IsNullOrWhiteSpace(absolute))
+                    _sources.Add(new SlideshowSource { Path = absolute, IncludeSubfolders = source.IncludeSubfolders });
+            }
+            foreach (var slide in project.Slides)
+            {
+                var absolute = path is null ? slide.Path : SlideshowProjectPaths.ToAbsolutePath(slide.Path, path);
+                if (!string.IsNullOrWhiteSpace(absolute)) Images.Add(new SlideshowItemViewModel(absolute, slide.Id));
+            }
+
+            var presentation = project.Presentation;
+            SelectedResolution = Resolutions.FirstOrDefault(r => r.Width == presentation.Width && r.Height == presentation.Height) ?? Resolutions[0];
+            ImageDuration = presentation.ImageDuration; SelectedType = presentation.Type;
+            SelectedBackgroundType = presentation.BackgroundType; BackgroundColor = presentation.BackgroundColor;
+            GradientEndColor = presentation.GradientEndColor; SelectedGradientDirection = presentation.GradientDirection;
+            BackgroundImage = path is null ? presentation.BackgroundImage : SlideshowProjectPaths.ToAbsolutePath(presentation.BackgroundImage, path);
+            ImageScaling = presentation.ImageScaling; EnableBorder = presentation.EnableBorder;
+            BorderWidth = presentation.BorderWidth; BorderColor = presentation.BorderColor;
+            EnableShadow = presentation.EnableShadow; ShadowOffsetX = presentation.ShadowOffsetX;
+            ShadowOffsetY = presentation.ShadowOffsetY; ShadowBlur = presentation.ShadowBlur;
+            ShadowOpacity = presentation.ShadowOpacity; UseEnhancedBackgroundProcessing = presentation.UseEnhancedBackgroundProcessing;
+            PreferImageMagick = presentation.PreferImageMagick; ImageMagickPath = presentation.ImageMagickPath;
+            SelectedTransitionMode = presentation.TransitionMode;
+            SelectedTransition = TransitionCatalog.Find(presentation.TransitionId) ?? TransitionCatalog.Fade;
+            TransitionDuration = presentation.TransitionDuration;
+            AudioFile = path is null ? project.Audio.Path : SlideshowProjectPaths.ToAbsolutePath(project.Audio.Path, path);
+            Volume = project.Audio.Volume; FrameRate = project.Export.FrameRate; Quality = project.Export.Quality;
+            EncoderPreset = project.Export.EncoderPreset;
+            OutputFile = path is null ? project.Export.OutputFile ?? string.Empty : SlideshowProjectPaths.ToAbsolutePath(project.Export.OutputFile, path) ?? string.Empty;
+            ProjectPath = path is null ? null : Path.GetFullPath(path);
+            ProjectName = string.IsNullOrWhiteSpace(project.Name) ? "Untitled slideshow" : project.Name;
+            ProgressValue = 0;
+        }
+        finally
+        {
+            _isApplyingProject = false;
+            IsDirty = false;
+            RefreshCollectionState();
+        }
+    }
+
+    private void MarkDirty()
+    {
+        if (!_isApplyingProject) IsDirty = true;
+    }
+
+    private static string SanitizeFileName(string value)
+    {
+        foreach (var character in Path.GetInvalidFileNameChars()) value = value.Replace(character, '_');
+        return string.IsNullOrWhiteSpace(value) ? "slideshow" : value;
+    }
     private void OpenOutput() { if (File.Exists(OutputFile)) Process.Start(new ProcessStartInfo { FileName = OutputFile, UseShellExecute = true }); }
     private void Reindex() { for (var i = 0; i < Images.Count; i++) Images[i].Position = i + 1; OnPropertyChanged(nameof(ImageCountText)); }
     private void RefreshCollectionState() { Reindex(); OnPropertyChanged(nameof(HasImages)); OnPropertyChanged(nameof(CanCreate)); CreateCommand.NotifyCanExecuteChanged(); ClearCommand.NotifyCanExecuteChanged(); }
@@ -226,5 +446,7 @@ public partial class SlideshowViewModel : ViewModelBase
             _settings.SaveSlideshowTransition(SelectedTransitionMode, SelectedTransition.Id, TransitionDuration);
     }
     partial void OnOutputFileChanged(string value) { OnPropertyChanged(nameof(CanCreate)); CreateCommand.NotifyCanExecuteChanged(); OpenOutputCommand.NotifyCanExecuteChanged(); }
-    partial void OnIsRunningChanged(bool value) { OnPropertyChanged(nameof(CanCreate)); CreateCommand.NotifyCanExecuteChanged(); CancelCommand.NotifyCanExecuteChanged(); ClearCommand.NotifyCanExecuteChanged(); }
+    partial void OnIsRunningChanged(bool value) { OnPropertyChanged(nameof(CanCreate)); CreateCommand.NotifyCanExecuteChanged(); CancelCommand.NotifyCanExecuteChanged(); ClearCommand.NotifyCanExecuteChanged(); NewProjectCommand.NotifyCanExecuteChanged(); OpenProjectCommand.NotifyCanExecuteChanged(); SaveProjectCommand.NotifyCanExecuteChanged(); SaveProjectAsCommand.NotifyCanExecuteChanged(); }
+    partial void OnIsDirtyChanged(bool value) => OnPropertyChanged(nameof(ProjectTitle));
+    partial void OnProjectNameChanged(string value) => OnPropertyChanged(nameof(ProjectTitle));
 }
