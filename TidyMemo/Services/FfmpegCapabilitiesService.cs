@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,10 +14,21 @@ public sealed record FfmpegCapabilities(bool HasXfade, bool HasZoompan,
 
 public sealed partial class FfmpegCapabilitiesService
 {
+    private static readonly ConcurrentDictionary<string, FfmpegCapabilities> Cache = new(StringComparer.OrdinalIgnoreCase);
+
     [GeneratedRegex(@"^\s+[a-z][a-z0-9]*\s+-?\d+\s+\.\.", RegexOptions.Multiline | RegexOptions.IgnoreCase)]
     private static partial Regex TransitionLineRegex();
 
     public async Task<FfmpegCapabilities> DetectAsync(string ffmpegPath, CancellationToken token = default)
+    {
+        var cacheKey = GetCacheKey(ffmpegPath);
+        if (Cache.TryGetValue(cacheKey, out var cached)) return cached;
+        var detected = await DetectUncachedAsync(ffmpegPath, token);
+        Cache[cacheKey] = detected;
+        return detected;
+    }
+
+    private static async Task<FfmpegCapabilities> DetectUncachedAsync(string ffmpegPath, CancellationToken token)
     {
         var psi = new ProcessStartInfo
         {
@@ -47,6 +60,19 @@ public sealed partial class FfmpegCapabilitiesService
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return new(false, false, new HashSet<string>(), exception.Message);
+        }
+    }
+
+    private static string GetCacheKey(string ffmpegPath)
+    {
+        try
+        {
+            var fullPath = Path.GetFullPath(ffmpegPath);
+            return $"{fullPath}|{File.GetLastWriteTimeUtc(fullPath).Ticks}|{new FileInfo(fullPath).Length}";
+        }
+        catch
+        {
+            return ffmpegPath;
         }
     }
 

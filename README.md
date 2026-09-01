@@ -21,6 +21,20 @@ Progress and elapsed time are written to standard output. Exit code `0` means su
 the export failed, `2` means the command line or configuration is invalid, and `130` means it was
 cancelled with Ctrl+C. Starting TidyMemo without arguments still opens the graphical interface.
 
+### Performance scenarios
+
+The test project contains opt-in performance scenarios for the basic pipeline, visual effects plus
+transitions, and Photo Motion plus transitions. They generate deterministic gradient images at
+runtime, so no external photo set or binary fixture is required.
+
+    $env:TIDYMEMO_RUN_PERF_TESTS = " + '"1"' + "
+    $env:TIDYMEMO_FFMPEG = " + '"C:\ffmpeg\bin\ffmpeg.exe"' + "
+    dotnet test --filter " + '"Category=Performance"' + " --logger " + '"console;verbosity=detailed"' + "
+
+`TIDYMEMO_PERF_IMAGE_COUNT`, `TIDYMEMO_PERF_WIDTH` and `TIDYMEMO_PERF_HEIGHT` can override the
+defaults of 12 images at 1280x720. Each scenario reports elapsed time, approximate output frames
+per second and output size.
+
 **Organize, understand, transform, and revisit your photo and video memories — locally.**
 
 TidyMemo is a free, open-source desktop application for maintaining personal

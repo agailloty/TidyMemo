@@ -180,9 +180,9 @@ public sealed class SlideshowService
         IReadOnlyList<string> segments, IReadOnlyList<TransitionDefinition> transitions, double totalDuration)
     {
         var psi = NewProcess(o.FfmpegPath);
-        Add(psi, "-hide_banner", "-filter_complex_threads", "1");
+        Add(psi, "-hide_banner");
         foreach (var segment in segments)
-            Add(psi, "-threads", "1", "-i", segment);
+            Add(psi, "-i", segment);
         if (!string.IsNullOrWhiteSpace(o.AudioFile)) Add(psi, "-stream_loop", "-1", "-i", o.AudioFile!);
         var graph = transitions.Count == 0
             ? TransitionGraphBuilder.BuildSegmentConcat(segments.Count, o.FrameRate, o.Width, o.Height)
@@ -204,11 +204,13 @@ public sealed class SlideshowService
     {
         var output = Path.Combine(tempRoot, "motion-segments");
         Directory.CreateDirectory(output);
-        var result = new List<string>(slides.Count);
+        var result = new string[slides.Count];
         var frames = Math.Max(1, (int)Math.Round(o.ImageDuration * o.FrameRate));
-        for (var i = 0; i < slides.Count; i++)
+        var parallelism = RecommendedParallelism(slides.Count, maximum: 2);
+        var completed = 0;
+        await Parallel.ForEachAsync(Enumerable.Range(0, slides.Count),
+            new ParallelOptions { MaxDegreeOfParallelism = parallelism, CancellationToken = token }, async (i, itemToken) =>
         {
-            token.ThrowIfCancellationRequested();
             var target = Path.Combine(output, $"MOTION_{i + 1:D6}.mp4");
             var filter = MotionExpressionBuilder.Build(motions[i], o.MotionIntensity, o.MotionEasing,
                 o.ImageDuration, o.FrameRate, o.Width, o.Height);
@@ -216,18 +218,20 @@ public sealed class SlideshowService
                 filter = $"fps={o.FrameRate},scale={o.Width}:{o.Height}";
             filter += ",setsar=1,format=yuv420p";
             var psi = NewProcess(o.FfmpegPath);
-            Add(psi, "-hide_banner", "-threads", "1", "-framerate",
+            var encoderThreads = Math.Max(1, Environment.ProcessorCount / parallelism);
+            Add(psi, "-hide_banner", "-threads", encoderThreads.ToString(CultureInfo.InvariantCulture), "-framerate",
                 o.FrameRate.ToString(CultureInfo.InvariantCulture), "-loop", "1", "-i", slides[i],
                 "-vf", filter, "-frames:v", frames.ToString(CultureInfo.InvariantCulture),
                 "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "12",
                 "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-y", target);
-            var run = await RunToolAsync(psi, token);
+            var run = await RunToolAsync(psi, itemToken);
             if (run.ExitCode != 0 || !File.Exists(target))
                 throw new InvalidOperationException($"Could not render motion {i + 1}/{slides.Count}: {LastUsefulError(run.Error)}");
-            result.Add(target);
-            progress?.Report(new SlideshowProgress(25 + (i + 1d) / slides.Count * 45,
-                $"Rendered motion {i + 1}/{slides.Count}"));
-        }
+            result[i] = target;
+            var completedCount = Interlocked.Increment(ref completed);
+            progress?.Report(new SlideshowProgress(25 + completedCount / (double)slides.Count * 45,
+                $"Rendered motion {completedCount}/{slides.Count}"));
+        });
         return result;
     }
 
@@ -304,21 +308,28 @@ public sealed class SlideshowService
     {
         var output = Path.Combine(tempRoot, "composited");
         Directory.CreateDirectory(output);
-        var result = new List<string>(o.Images.Count);
+        var result = new string[o.Images.Count];
         var sw = Math.Max(2, (int)(o.Width * o.ImageScaling));
         var sh = Math.Max(2, (int)(o.Height * o.ImageScaling));
-        for (var i = 0; i < o.Images.Count; i++)
+        var completed = 0;
+        await Parallel.ForEachAsync(Enumerable.Range(0, o.Images.Count),
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = RecommendedParallelism(o.Images.Count),
+                CancellationToken = token
+            }, async (i, itemToken) =>
         {
-            token.ThrowIfCancellationRequested();
             var target = Path.Combine(output, $"IMG_{i + 1:D6}.jpg");
             var psi = NewProcess(o.ImageMagickPath);
             Add(psi, o.BackgroundImage!, "-resize", $"{o.Width}x{o.Height}^", "-gravity", "center", "-extent", $"{o.Width}x{o.Height}",
                 "(", o.Images[i], "-resize", $"{sw}x{sh}>", ")", "-gravity", "center", "-composite", target);
-            var run = await RunToolAsync(psi, token);
+            var run = await RunToolAsync(psi, itemToken);
             if (run.ExitCode != 0 || !File.Exists(target)) throw new InvalidOperationException($"ImageMagick failed: {run.Error}");
-            result.Add(target);
-            progress?.Report(new SlideshowProgress((i + 1d) / o.Images.Count * 25, $"Composited {i + 1}/{o.Images.Count} images"));
-        }
+            result[i] = target;
+            var completedCount = Interlocked.Increment(ref completed);
+            progress?.Report(new SlideshowProgress(completedCount / (double)o.Images.Count * 25,
+                $"Composited {completedCount}/{o.Images.Count} images"));
+        });
         return result;
     }
 
@@ -340,23 +351,28 @@ public sealed class SlideshowService
             ? Math.Max(2, (int)(o.Height * o.ImageScaling) / 2 * 2)
             : o.Height;
         var paddingColor = isBackground ? "black@0" : "black";
-        var result = new List<string>(o.Images.Count);
-
-        for (var i = 0; i < o.Images.Count; i++)
+        var result = new string[o.Images.Count];
+        var completed = 0;
+        await Parallel.ForEachAsync(Enumerable.Range(0, o.Images.Count),
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = RecommendedParallelism(o.Images.Count),
+                CancellationToken = token
+            }, async (i, itemToken) =>
         {
-            token.ThrowIfCancellationRequested();
             var target = Path.Combine(output, $"IMG_{i + 1:D6}.png");
             var psi = NewProcess(o.FfmpegPath);
             Add(psi, "-hide_banner", "-i", o.Images[i], "-filter_complex",
                 BuildImageEffectFilter(o, width, height, paddingColor),
-                "-map", "[prepared]", "-frames:v", "1", "-y", target);
-            var run = await RunToolAsync(psi, token);
+                "-map", "[prepared]", "-frames:v", "1", "-compression_level", "1", "-y", target);
+            var run = await RunToolAsync(psi, itemToken);
             if (run.ExitCode != 0 || !File.Exists(target))
                 throw new InvalidOperationException($"Could not prepare {Path.GetFileName(o.Images[i])}: {LastUsefulError(run.Error)}");
-            result.Add(target);
-            progress?.Report(new SlideshowProgress((i + 1d) / o.Images.Count * 20,
-                $"Prepared {i + 1}/{o.Images.Count} images"));
-        }
+            result[i] = target;
+            var completedCount = Interlocked.Increment(ref completed);
+            progress?.Report(new SlideshowProgress(completedCount / (double)o.Images.Count * 20,
+                $"Prepared {completedCount}/{o.Images.Count} images"));
+        });
 
         return result;
     }
@@ -368,25 +384,35 @@ public sealed class SlideshowService
         if (o.Type == SlideshowType.Basic || alreadyComposited) return preparedImages;
         var output = Path.Combine(tempRoot, "slides");
         Directory.CreateDirectory(output);
-        var result = new List<string>(preparedImages.Count);
-        for (var i = 0; i < preparedImages.Count; i++)
+        var result = new string[preparedImages.Count];
+        var completed = 0;
+        await Parallel.ForEachAsync(Enumerable.Range(0, preparedImages.Count),
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = RecommendedParallelism(preparedImages.Count),
+                CancellationToken = token
+            }, async (i, itemToken) =>
         {
-            token.ThrowIfCancellationRequested();
             var target = Path.Combine(output, $"SLIDE_{i + 1:D6}.png");
             var psi = NewProcess(o.FfmpegPath);
             Add(psi, "-hide_banner", "-i", preparedImages[i]);
             var backgroundInput = o.BackgroundType == SlideshowBackgroundType.Image;
             if (backgroundInput) Add(psi, "-i", o.BackgroundImage!);
-            Add(psi, "-filter_complex", BuildFilter(o, backgroundInput, false), "-map", "[video]", "-frames:v", "1", "-y", target);
-            var run = await RunToolAsync(psi, token);
+            Add(psi, "-filter_complex", BuildFilter(o, backgroundInput, false), "-map", "[video]",
+                "-frames:v", "1", "-compression_level", "1", "-y", target);
+            var run = await RunToolAsync(psi, itemToken);
             if (run.ExitCode != 0 || !File.Exists(target))
                 throw new InvalidOperationException($"Could not render slide {i + 1}: {LastUsefulError(run.Error)}");
-            result.Add(target);
-            progress?.Report(new SlideshowProgress(20 + (i + 1d) / preparedImages.Count * 15,
-                $"Rendered {i + 1}/{preparedImages.Count} slides"));
-        }
+            result[i] = target;
+            var completedCount = Interlocked.Increment(ref completed);
+            progress?.Report(new SlideshowProgress(20 + completedCount / (double)preparedImages.Count * 15,
+                $"Rendered {completedCount}/{preparedImages.Count} slides"));
+        });
         return result;
     }
+
+    public static int RecommendedParallelism(int itemCount, int maximum = 4) =>
+        Math.Max(1, Math.Min(itemCount, Math.Min(maximum, Math.Max(1, Environment.ProcessorCount / 2))));
 
     private static string BuildImageEffectFilter(SlideshowOptions o, int width, int height, string paddingColor)
     {
